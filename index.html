@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revengers time boss</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=2">
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard-screen" style="display: none; opacity: 0; transition: opacity 0.5s ease;">
+        <header>
+            <div class="header-content">
+                <h1>Revengers time boss</h1>
+                <div class="header-actions">
+                    <span id="live-thai-clock" class="badge" style="background: rgba(0, 242, 254, 0.1); border: 1px solid rgba(0, 242, 254, 0.3); color: #00f2fe; letter-spacing: 1px; font-family: monospace; font-size: 0.85rem;">🕒 --:--:--</span>
+                    <button id="log-btn" class="btn secondary" onclick="openLogModal()" title="ประวัติการแก้ไข">📜 ประวัติ</button>
+                    <button id="logout-btn" class="btn logout-icon-btn" onclick="logout()" title="ออกจากระบบ">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Search Bar and Actions -->
+        <div class="search-container">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="search-input" placeholder="ค้นหาชื่อ Boss หรือ สถานที่..." autocomplete="off" spellcheck="false">
+            </div>
+            <button id="add-boss-btn" class="btn secondary">+ เพิ่มบอส</button>
+        </div>
+
+        <!-- Boss Table -->
+        <main>
+            <div class="boss-table-container">
+                <table class="boss-table">
+                    <thead>
+                        <tr>
+                            <th class="col-num">#</th>
+                            <th class="col-name">ชื่อบอส</th>
+                            <th class="col-spawn">⏰ เวลาที่จะเกิด</th>
+                            <th class="col-death">💀 เวลาตายล่าสุด</th>
+                            <th class="col-rate">🎲 % เกิด</th>
+                            <th class="col-cd">⏳ ชม.</th>
+                            <th class="col-loc">📍 สถานที่</th>
+                            <th class="col-action">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="boss-table-body">
+                        <!-- Boss rows and Group Banners dynamically generated -->
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- Boss Settings Modal -->
+    <div id="boss-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="modal-title">เพิ่ม / แก้ไขข้อมูลบอส</h2>
+            <form id="boss-form">
+                <input type="hidden" id="boss-id">
+                
+                <div class="form-group">
+                    <label>ชื่อบอส (Name)</label>
+                    <input type="text" id="boss-name" placeholder="เช่น Queen Ant / คลีนแอนท์" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>สถานที่ (Location)</label>
+                    <input type="text" id="boss-location" placeholder="เช่น ดินแดนร้าง (Wasteland)">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>เกิดครั้งแรก (ชั่วโมง)</label>
+                        <input type="number" id="boss-first-h" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>เกิดครั้งแรก (นาที)</label>
+                        <input type="number" id="boss-first-m" min="0" max="59" value="0">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>เกิดปกติ (ชั่วโมง)</label>
+                        <input type="number" id="boss-reg-h" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>เกิดปกติ (นาที)</label>
+                        <input type="number" id="boss-reg-m" min="0" max="59" value="0">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>% โอกาสเกิด (Spawn Rate)</label>
+                    <input type="number" id="boss-spawn-rate" placeholder="100" min="0" max="100" value="100">
+                </div>
+                
+                <div class="form-group toggle-group">
+                    <label>
+                        <input type="checkbox" id="boss-use-first">
+                        ใช้ "เวลาเกิดครั้งแรก" ในรอบถัดไป
+                    </label>
+                </div>
+
+                <div class="form-group toggle-group">
+                    <label>
+                        <input type="checkbox" id="boss-active" checked>
+                        เปิดใช้งาน (แสดงบนตาราง)
+                    </label>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" id="btn-delete-boss" class="btn" style="background:#ef4444;color:#fff;display:none;margin-right:auto;" onclick="deleteBoss()">ลบบอส</button>
+                    <button type="button" class="btn" style="background:#475569;color:#f8fafc;" onclick="closeModal('boss-modal')">ยกเลิก</button>
+                    <button type="submit" class="btn primary">บันทึกข้อมูล</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Boss Dead Modal -->
+    <div id="dead-modal" class="modal">
+        <div class="modal-content small-modal">
+            <h2>บันทึกเวลาตาย</h2>
+            <p id="dead-boss-name" class="highlight-text"></p>
+            <form id="dead-form">
+                <input type="hidden" id="dead-boss-id">
+                <div class="form-group">
+                    <div id="dead-last-spawn" style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.75rem; text-align: center;"></div>
+                    <label>วันที่และเวลาที่บอสตาย (แบบ 24 ชม.)</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="date" id="dead-date" required style="flex: 1; padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.5); color: #fff; color-scheme: dark;">
+                        <input type="text" id="dead-time" placeholder="HH:mm" pattern="^([01]?[0-9]|2[0-3]):[0-5][0-9]$" required style="flex: 1; padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.5); color: #fff; text-align: center;">
+                    </div>
+                    <div id="dead-spawn-preview" style="color: var(--accent-cyan); font-size: 0.85rem; margin-top: 8px; text-align: center; min-height: 1.2rem;"></div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn" style="background:#cbd5e1;color:#334155;" onclick="closeModal('dead-modal')">ยกเลิก</button>
+                    <button type="submit" class="btn secondary">ยืนยันบอสตาย</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Log History Modal -->
+    <div id="log-modal" class="modal">
+        <div class="modal-content" style="max-width: 800px; width: 95%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="margin:0;">📜 ประวัติการแก้ไข</h2>
+                <button class="btn secondary" onclick="closeModal('log-modal')" style="padding: 4px 10px;">X</button>
+            </div>
+            <div class="log-table-container" style="max-height: 400px; overflow-y: auto;">
+                <table class="boss-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 20%; padding: 8px;">เวลา</th>
+                            <th style="width: 20%; padding: 8px;">บอส</th>
+                            <th style="width: 15%; padding: 8px;">ผู้แก้ไข</th>
+                            <th style="width: 45%; padding: 8px;">รายละเอียด</th>
+                        </tr>
+                    </thead>
+                    <tbody id="log-table-body">
+                        <!-- Logs will go here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js?v=38"></script>
+</body>
+</html>
