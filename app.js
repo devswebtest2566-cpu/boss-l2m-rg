@@ -434,9 +434,9 @@ function createBossRow(boss, index) {
     const now = Date.now();
 
     if (nextSpawnTime > 0 && nextSpawnTime <= now) {
-        spawnPillHTML = `<span class="spawn-pill spawned-pill" id="countdown-${boss.id}" style="font-size: 1.1rem; padding: 6px 12px; font-weight: bold;">⚡ SPAWNED</span>`;
+        spawnPillHTML = `<span class="spawn-pill spawned-pill" id="countdown-${boss.id}" style="font-size: 0.95rem; padding: 4px 10px; font-weight: bold;">⚡ SPAWNED</span>`;
     } else {
-        spawnPillHTML = `<span class="spawn-pill blue-pill" id="countdown-${boss.id}" style="font-size: 1.15rem; padding: 6px 12px; font-weight: bold; font-family: monospace;">⏱️ ${formatHHmm(boss.next_spawn_time)}</span>`;
+        spawnPillHTML = `<span class="spawn-pill blue-pill" id="countdown-${boss.id}" style="font-size: 1rem; padding: 4px 10px; font-weight: bold; font-family: monospace;">⏱️ ${formatHHmm(boss.next_spawn_time)}</span>`;
     }
 
     tr.innerHTML = `
