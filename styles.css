@@ -366,3 +366,49 @@ main { max-width: 1300px; margin: 0 auto; padding: 0 1rem; }
     box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
     transform: translateY(-2px);
 }
+
+/* Split View / Invasion Mode Styles */
+.split-view-container {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    transition: all 0.3s ease;
+}
+
+#home-table-container { flex: 1; transition: all 0.3s ease; }
+#inv-table-container { flex: 1; transition: all 0.3s ease; }
+
+.invasion-active .col-death,
+.invasion-active .col-rate,
+.invasion-active .col-cd,
+.invasion-active .col-loc {
+    display: none !important;
+}
+
+.invasion-active td:nth-child(4),
+.invasion-active td:nth-child(5),
+.invasion-active td:nth-child(6) {
+    display: none !important;
+}
+
+.invasion-active .boss-name-wrapper {
+    max-width: 150px;
+}
+
+.invasion-table {
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.invasion-table tr {
+    background: rgba(239, 68, 68, 0.02) !important;
+}
+
+.invasion-table tr:hover {
+    background: rgba(239, 68, 68, 0.08) !important;
+}
+
+.invasion-table .spawn-pill.blue-pill {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    border-color: rgba(239, 68, 68, 0.3);
+}

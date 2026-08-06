@@ -11,8 +11,37 @@ let currentUserRole = 'viewer';
 
 // --- Global Variables ---
 let bosses = [];
+let isInvasionMode = false;
 let countdownInterval = null;
 let searchQuery = '';
+
+window.toggleInvasionMode = function() {
+    isInvasionMode = !isInvasionMode;
+    const body = document.body;
+    const homeContainer = document.getElementById('home-table-container');
+    const invContainer = document.getElementById('inv-table-container');
+    const homeTitle = document.getElementById('home-title');
+    const invBtn = document.getElementById('invasion-btn');
+
+    if (isInvasionMode) {
+        body.classList.add('invasion-active');
+        if (invContainer) invContainer.style.display = 'block';
+        if (homeTitle) homeTitle.style.display = 'block';
+        if (invBtn) {
+            invBtn.style.background = '#ef4444';
+            invBtn.style.color = '#fff';
+        }
+    } else {
+        body.classList.remove('invasion-active');
+        if (invContainer) invContainer.style.display = 'none';
+        if (homeTitle) homeTitle.style.display = 'none';
+        if (invBtn) {
+            invBtn.style.background = 'transparent';
+            invBtn.style.color = '#ef4444';
+        }
+    }
+    renderBosses();
+}
 
 // --- DOM Elements ---
 const swalDark = Swal.mixin({
@@ -37,6 +66,8 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('boss-form').reset();
             document.getElementById('boss-id').value = '';
             document.getElementById('modal-title').textContent = 'Add Boss';
+            const bothLabel = document.getElementById('label-boss-server-both');
+            if (bothLabel) bothLabel.style.display = 'flex';
             const delBtn = document.getElementById('btn-delete-boss');
             if (delBtn) delBtn.style.display = 'none';
             openModal('boss-modal');
@@ -192,14 +223,15 @@ function promptForName() {
     });
 }
 
-async function addLog(actionType, bossName, details) {
+async function addLog(actionType, bossName, details, serverContext = 'home') {
     if (!supabaseClient) return;
     const editorName = localStorage.getItem('editor_name') || 'Unknown User';
     const payload = {
         action_type: actionType,
         boss_name: bossName,
         details: details,
-        editor_name: editorName
+        editor_name: editorName,
+        server_context: serverContext
     };
     const { error } = await supabaseClient.from('boss_logs').insert([payload]);
     if (error) console.error("Error saving log:", error);
@@ -270,15 +302,17 @@ async function fetchBosses() {
 
 // --- Smart Sort & Render (Grouped Table View) ---
 function renderBosses() {
+    const bossTableBody = document.getElementById('boss-table-body');
+    const invBossTableBody = document.getElementById('inv-boss-table-body');
     if (!bossTableBody) return;
     bossTableBody.innerHTML = '';
+    if (invBossTableBody) invBossTableBody.innerHTML = '';
 
     // Search Filtering
     let filteredBosses = bosses.filter(b => b.is_active);
     if (searchQuery) {
         filteredBosses = filteredBosses.filter(b => 
-            (b.name && b.name.toLowerCase().includes(searchQuery)) ||
-            (b.location && b.location.toLowerCase().includes(searchQuery))
+            (b.name && b.name.toLowerCase().includes(searchQuery))
         );
     }
 
@@ -289,16 +323,31 @@ function renderBosses() {
         return timeA - timeB;
     });
 
-    let rowIndex = 1;
+    let homeBosses = filteredBosses.filter(b => b.server_type !== 'invasion');
+    let invBosses = filteredBosses.filter(b => b.server_type === 'invasion');
 
-    filteredBosses.forEach(boss => {
-        bossTableBody.appendChild(createBossRow(boss, rowIndex++));
+    let homeRowIndex = 1;
+    homeBosses.forEach(boss => {
+        bossTableBody.appendChild(createBossRow(boss, homeRowIndex++));
     });
 
-    if (filteredBosses.length === 0) {
+    if (homeBosses.length === 0) {
         const emptyRow = document.createElement('tr');
         emptyRow.innerHTML = `<td colspan="8" style="text-align:center;padding:2rem;color:#94a3b8;">ไม่พบข้อมูลบอส (กดปุ่ม + Add Boss เพื่อเพิ่มบอส)</td>`;
         bossTableBody.appendChild(emptyRow);
+    }
+
+    if (isInvasionMode && invBossTableBody) {
+        let invRowIndex = 1;
+        invBosses.forEach(boss => {
+            invBossTableBody.appendChild(createBossRow(boss, invRowIndex++));
+        });
+        
+        if (invBosses.length === 0) {
+            const emptyRow = document.createElement('tr');
+            emptyRow.innerHTML = `<td colspan="8" style="text-align:center;padding:2rem;color:#94a3b8;">ไม่พบข้อมูลบอสศัตรู</td>`;
+            invBossTableBody.appendChild(emptyRow);
+        }
     }
 
     updateCountdowns();
@@ -349,15 +398,10 @@ function createBossRow(boss, index) {
         </td>
         <td class="rate-badge">${spawnRate}</td>
         <td style="text-align:center;"><span class="cd-badge">${respawnHours}</span></td>
-        <td>
-            <div class="location-wrapper">
-                <span class="location-pill">🗺️ ${boss.location || '-'}</span>
-            </div>
-        </td>
         <td style="text-align:center;">
             <div class="action-cell">
-                <button class="btn action-dead" onclick="openDeadModal('${boss.id}', '${nameThai}')">ตาย</button>
-                <button class="btn action-skip" onclick="skipSpawn('${boss.id}')">ข้าม</button>
+                <button class="btn action-dead" onclick="openDeadModal('${boss.id}')">ตาย</button>
+                <button class="btn action-skip" onclick="skipSpawn('${boss.id}')">ไม่เกิด</button>
                 <button class="btn action-edit" onclick="editBoss('${boss.id}')">แก้ไข</button>
             </div>
         </td>
@@ -468,9 +512,12 @@ const deadDateInput = document.getElementById('dead-date');
 if (deadTimeInput) deadTimeInput.addEventListener('input', updateSpawnPreview);
 if (deadDateInput) deadDateInput.addEventListener('input', updateSpawnPreview);
 
-window.openDeadModal = async function (id, name) {
+window.openDeadModal = async function (id) {
     const boss = bosses.find(b => b.id === id);
     if (!boss) return;
+    
+    const nameParts = (boss.name || '').split('/');
+    const nameThai = nameParts[0] ? nameParts[0].trim() : boss.name;
     
     if (boss.next_spawn_time) {
         const nextTime = new Date(boss.next_spawn_time).getTime();
@@ -491,7 +538,7 @@ window.openDeadModal = async function (id, name) {
     currentDeadBossCooldown = boss.use_first_spawn ? (boss.first_spawn_mins || 0) : (boss.regular_respawn_mins || 0);
 
     document.getElementById('dead-boss-id').value = id;
-    document.getElementById('dead-boss-name').textContent = name;
+    document.getElementById('dead-boss-name').textContent = nameThai;
     
     const lastSpawnEl = document.getElementById('dead-last-spawn');
     if (lastSpawnEl) {
@@ -538,7 +585,6 @@ window.editBoss = function (id) {
 
     document.getElementById('boss-id').value = boss.id;
     document.getElementById('boss-name').value = boss.name;
-    document.getElementById('boss-location').value = boss.location || '';
 
     document.getElementById('boss-first-h').value = Math.floor((boss.first_spawn_mins || 0) / 60);
     document.getElementById('boss-first-m').value = (boss.first_spawn_mins || 0) % 60;
@@ -549,6 +595,14 @@ window.editBoss = function (id) {
     document.getElementById('boss-use-first').checked = boss.use_first_spawn;
     document.getElementById('boss-active').checked = boss.is_active;
     document.getElementById('boss-spawn-rate').value = boss.spawn_rate_percent ?? 100;
+
+    if (boss.server_type === 'invasion') {
+        document.getElementById('boss-server-inv').checked = true;
+    } else {
+        document.getElementById('boss-server-home').checked = true;
+    }
+    const bothLabel = document.getElementById('label-boss-server-both');
+    if (bothLabel) bothLabel.style.display = 'none';
 
     document.getElementById('modal-title').textContent = 'Edit Boss';
     const delBtn = document.getElementById('btn-delete-boss');
@@ -572,9 +626,10 @@ async function handleSaveBoss(e) {
     const regH = parseInt(document.getElementById('boss-reg-h').value) || 0;
     const regM = parseInt(document.getElementById('boss-reg-m').value) || 0;
 
-    const payload = {
+    const serverType = document.querySelector('input[name="server_type"]:checked').value;
+
+    const basePayload = {
         name: document.getElementById('boss-name').value,
-        location: document.getElementById('boss-location').value,
         first_spawn_mins: (firstH * 60) + firstM,
         regular_respawn_mins: (regH * 60) + regM,
         use_first_spawn: document.getElementById('boss-use-first').checked,
@@ -583,18 +638,31 @@ async function handleSaveBoss(e) {
     };
 
     if (id) {
+        const payload = { ...basePayload, server_type: serverType };
         const { error } = await supabaseClient.from('bosses').update(payload).eq('id', id);
         if (error) {
             swalDark.fire('Error', "Error updating: " + error.message, 'error');
         } else {
-            addLog("Edit", payload.name, "แก้ไขข้อมูลบอส");
+            addLog("Edit", payload.name, "แก้ไขข้อมูลบอส", serverType);
         }
     } else {
-        const { error } = await supabaseClient.from('bosses').insert([payload]);
-        if (error) {
-            swalDark.fire('Error', "Error creating: " + error.message, 'error');
+        if (serverType === 'both') {
+            const payloadHome = { ...basePayload, server_type: 'home' };
+            const payloadInv = { ...basePayload, server_type: 'invasion' };
+            const { error } = await supabaseClient.from('bosses').insert([payloadHome, payloadInv]);
+            if (error) {
+                swalDark.fire('Error', "Error creating: " + error.message, 'error');
+            } else {
+                addLog("Add", basePayload.name, "เพิ่มบอสใหม่ (ทั้ง 2 เซิร์ฟเวอร์)", 'home');
+            }
         } else {
-            addLog("Add", payload.name, "เพิ่มบอสใหม่");
+            const payload = { ...basePayload, server_type: serverType };
+            const { error } = await supabaseClient.from('bosses').insert([payload]);
+            if (error) {
+                swalDark.fire('Error', "Error creating: " + error.message, 'error');
+            } else {
+                addLog("Add", payload.name, "เพิ่มบอสใหม่", serverType);
+            }
         }
     }
 
@@ -638,7 +706,7 @@ async function handleConfirmDeath(e) {
         const ddFormat = String(d).padStart(2, '0');
         const hhFormat = String(inputHours).padStart(2, '0');
         const minFormat = String(inputMins).padStart(2, '0');
-        addLog("Dead", boss.name, `บันทึกเวลาตายเป็น ${ddFormat}/${mmFormat} ${hhFormat}:${minFormat}`);
+        addLog("Dead", boss.name, `บันทึกเวลาตายเป็น ${ddFormat}/${mmFormat} ${hhFormat}:${minFormat}`, boss.server_type);
     }
 
     closeModal('dead-modal');
@@ -650,7 +718,7 @@ window.skipSpawn = async function (id) {
 
     const boss = bosses.find(b => b.id === id);
     if (!boss || !boss.next_spawn_time) {
-        swalDark.fire('เกิดข้อผิดพลาด', 'ไม่สามารถข้ามได้ (ยังไม่ทราบเวลาเกิดรอบถัดไป)', 'error');
+        swalDark.fire('เกิดข้อผิดพลาด', 'อัปเดตไม่ได้ (ยังไม่ทราบเวลาเกิดรอบถัดไป)', 'error');
         return;
     }
 
@@ -663,11 +731,11 @@ window.skipSpawn = async function (id) {
     }
 
     const result = await swalDark.fire({
-        title: 'ยืนยันการข้ามเวลา?',
+        title: 'ยืนยันบอสไม่เกิด?',
         html: htmlContent,
         icon: isEarly ? 'warning' : 'question',
         showCancelButton: true,
-        confirmButtonText: 'ยืนยันการข้าม',
+        confirmButtonText: 'ยืนยัน (ไม่เกิด)',
         cancelButtonText: 'ยกเลิก',
         confirmButtonColor: isEarly ? '#f59e0b' : '#2563eb'
     });
@@ -688,7 +756,7 @@ window.skipSpawn = async function (id) {
     if (error) {
         swalDark.fire('Error', "Error skipping spawn: " + error.message, 'error');
     } else {
-        addLog("Skip", boss.name, "ข้ามเวลาเกิด 1 รอบ");
+        addLog("Skip", boss.name, "บอสไม่เกิด 1 รอบ", boss.server_type);
         fetchBosses();
     }
 }
@@ -758,7 +826,7 @@ window.openLogModal = async function() {
         let actionLabel = log.action_type;
         let actionColor = '#fff';
         if (actionLabel === 'Dead') { actionLabel = 'ตาย'; actionColor = '#f43f5e'; }
-        if (actionLabel === 'Skip') { actionLabel = 'ข้าม'; actionColor = '#00f2fe'; }
+        if (actionLabel === 'Skip') { actionLabel = 'ไม่เกิด'; actionColor = '#00f2fe'; }
         if (actionLabel === 'Add') { actionLabel = 'เพิ่ม'; actionColor = '#22c55e'; }
         if (actionLabel === 'Edit') { actionLabel = 'แก้ไข'; actionColor = '#eab308'; }
         if (actionLabel === 'Delete') { actionLabel = 'ลบ'; actionColor = '#ef4444'; }

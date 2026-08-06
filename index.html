@@ -34,29 +34,54 @@
                 <span class="search-icon">🔍</span>
                 <input type="text" id="search-input" placeholder="ค้นหาชื่อ Boss หรือ สถานที่..." autocomplete="off" spellcheck="false">
             </div>
-            <button id="add-boss-btn" class="btn secondary">+ เพิ่มบอส</button>
+            <div style="display: flex; gap: 10px;">
+                <button id="invasion-btn" class="btn outline-btn" onclick="toggleInvasionMode()" title="สลับโหมด Server Invasion" style="border: 1px solid #ef4444; color: #ef4444; background: transparent;">⚔️ Server Invasion</button>
+                <button id="add-boss-btn" class="btn secondary">+ เพิ่มบอส</button>
+            </div>
         </div>
 
         <!-- Boss Table -->
-        <main>
-            <div class="boss-table-container">
-                <table class="boss-table">
-                    <thead>
-                        <tr>
-                            <th class="col-num">#</th>
-                            <th class="col-name">ชื่อบอส</th>
-                            <th class="col-spawn">⏰ เวลาที่จะเกิด</th>
-                            <th class="col-death">💀 เวลาตายล่าสุด</th>
-                            <th class="col-rate">🎲 % เกิด</th>
-                            <th class="col-cd">⏳ ชม.</th>
-                            <th class="col-loc">📍 สถานที่</th>
-                            <th class="col-action">จัดการ</th>
-                        </tr>
-                    </thead>
-                    <tbody id="boss-table-body">
-                        <!-- Boss rows and Group Banners dynamically generated -->
-                    </tbody>
-                </table>
+        <main id="main-content">
+            <div class="split-view-container" id="split-view-container">
+                <div class="boss-table-container" id="home-table-container">
+                    <h2 class="table-title" id="home-title" style="display: none; color: #fff; text-align: center; margin-bottom: 1rem; font-size: 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">🛡️ เซิร์ฟเวอร์เรา (Home)</h2>
+                    <table class="boss-table">
+                        <thead>
+                            <tr>
+                                <th class="col-num">#</th>
+                                <th class="col-name">ชื่อบอส</th>
+                                <th class="col-spawn">⏰ เวลาที่จะเกิด</th>
+                                <th class="col-death">💀 เวลาตายล่าสุด</th>
+                                <th class="col-rate">🎲 % เกิด</th>
+                                <th class="col-cd">⏳ ชม.</th>
+                                <th class="col-action">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="boss-table-body">
+                            <!-- Boss rows -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="boss-table-container" id="inv-table-container" style="display: none;">
+                    <h2 class="table-title" style="color: #ef4444; text-align: center; margin-bottom: 1rem; font-size: 1.1rem; border-bottom: 1px solid rgba(239,68,68,0.2); padding-bottom: 0.5rem;">⚔️ เซิร์ฟศัตรู (Invasion)</h2>
+                    <table class="boss-table invasion-table">
+                        <thead>
+                            <tr>
+                                <th class="col-num">#</th>
+                                <th class="col-name">ชื่อบอส</th>
+                                <th class="col-spawn">⏰ เวลาที่จะเกิด</th>
+                                <th class="col-death">💀 เวลาตายล่าสุด</th>
+                                <th class="col-rate">🎲 % เกิด</th>
+                                <th class="col-cd">⏳ ชม.</th>
+                                <th class="col-action">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inv-boss-table-body">
+                            <!-- Invasion Boss rows -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </main>
     </div>
@@ -68,14 +93,24 @@
             <form id="boss-form">
                 <input type="hidden" id="boss-id">
                 
-                <div class="form-group">
-                    <label>ชื่อบอส (Name)</label>
-                    <input type="text" id="boss-name" placeholder="เช่น Queen Ant / คลีนแอนท์" required>
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label>เซิร์ฟเวอร์ (Server)</label>
+                    <div style="display: flex; gap: 1rem; background: rgba(0,0,0,0.3); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0; cursor: pointer; color: #fff;">
+                            <input type="radio" name="server_type" value="home" id="boss-server-home" checked> เซิร์ฟเวอร์เรา (Home)
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0; cursor: pointer; color: #fca5a5;">
+                            <input type="radio" name="server_type" value="invasion" id="boss-server-inv"> เซิร์ฟศัตรู (Invasion)
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0; cursor: pointer; color: #d8b4fe;" id="label-boss-server-both">
+                            <input type="radio" name="server_type" value="both" id="boss-server-both"> ทั้งสองเซิร์ฟเวอร์
+                        </label>
+                    </div>
                 </div>
                 
                 <div class="form-group">
-                    <label>สถานที่ (Location)</label>
-                    <input type="text" id="boss-location" placeholder="เช่น ดินแดนร้าง (Wasteland)">
+                    <label>ชื่อบอส (Name)</label>
+                    <input type="text" id="boss-name" placeholder="เช่น Queen Ant / คลีนแอนท์" required>
                 </div>
                 
                 <div class="form-row">
