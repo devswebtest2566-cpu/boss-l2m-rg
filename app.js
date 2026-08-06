@@ -14,6 +14,20 @@ let bosses = [];
 let isInvasionMode = false;
 let countdownInterval = null;
 let searchQuery = '';
+let lastAutoPeriodState = false;
+let deadDateFP = null;
+
+function checkAutoInvasionSchedule() {
+    const now = Date.now();
+    const thaiDate = new Date(now + (7 * 3600 * 1000));
+    const day = thaiDate.getUTCDay(); // 1=Mon, 3=Wed, 5=Fri
+    const hour = thaiDate.getUTCHours();
+
+    const isTargetDay = (day === 1 || day === 3 || day === 5);
+    const isTargetTime = (hour >= 8);
+    
+    return isTargetDay && isTargetTime;
+}
 
 window.toggleInvasionMode = function() {
     isInvasionMode = !isInvasionMode;
@@ -61,6 +75,11 @@ const searchInput = document.getElementById('search-input');
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
+    lastAutoPeriodState = checkAutoInvasionSchedule();
+    if (lastAutoPeriodState && !isInvasionMode) {
+        window.toggleInvasionMode();
+    }
+
     if (addBossBtn) {
         addBossBtn.addEventListener('click', () => {
             document.getElementById('boss-form').reset();
@@ -72,6 +91,24 @@ document.addEventListener('DOMContentLoaded', () => {
             if (delBtn) delBtn.style.display = 'none';
             openModal('boss-modal');
         });
+    }
+
+    const deadDateEl = document.getElementById('dead-date');
+    if (deadDateEl) {
+        deadDateFP = flatpickr(deadDateEl, {
+            dateFormat: "Y-m-d",
+            altInput: true,
+            altFormat: "d/m/Y",
+            disableMobile: "true",
+            onChange: function() {
+                updateSpawnPreview();
+            }
+        });
+    }
+
+    const resetBossBtn = document.getElementById('reset-boss-btn');
+    if (resetBossBtn) {
+        resetBossBtn.addEventListener('click', handleResetTimers);
     }
 
     if (searchInput) {
@@ -237,6 +274,20 @@ async function addLog(actionType, bossName, details, serverContext = 'home') {
     if (error) console.error("Error saving log:", error);
 }
 
+let realtimeInitialized = false;
+function initRealtime() {
+    if (realtimeInitialized || !supabaseClient) return;
+    realtimeInitialized = true;
+    
+    supabaseClient
+        .channel('public:bosses')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'bosses' }, payload => {
+            // เมื่อมีการแก้ไขบอส (เช่น เวลาตายถูกอัปเดต) ให้ดึงข้อมูลใหม่ทันที
+            fetchBosses();
+        })
+        .subscribe();
+}
+
 function showDashboard() {
     const dashboard = document.getElementById('dashboard-screen');
     if (dashboard) {
@@ -246,15 +297,18 @@ function showDashboard() {
         }, 50);
     }
     fetchBosses();
+    initRealtime(); // เริ่มต้นระบบ Realtime
 }
 
 function applyRoleUI() {
     const addBtn = document.getElementById('add-boss-btn');
     const logBtn = document.getElementById('log-btn');
+    const resetBtn = document.getElementById('reset-boss-btn');
     
     if (currentUserRole === 'viewer') {
         if (addBtn) addBtn.style.display = 'none';
         if (logBtn) logBtn.style.display = 'none';
+        if (resetBtn) resetBtn.style.display = 'none';
         
         let styleEl = document.getElementById('viewer-style');
         if (!styleEl) {
@@ -266,6 +320,7 @@ function applyRoleUI() {
     } else {
         if (addBtn) addBtn.style.display = 'inline-block';
         if (logBtn) logBtn.style.display = 'inline-block';
+        if (resetBtn) resetBtn.style.display = 'inline-block';
         
         let styleEl = document.getElementById('viewer-style');
         if (styleEl) styleEl.remove();
@@ -379,9 +434,9 @@ function createBossRow(boss, index) {
     const now = Date.now();
 
     if (nextSpawnTime > 0 && nextSpawnTime <= now) {
-        spawnPillHTML = `<span class="spawn-pill spawned-pill" id="countdown-${boss.id}">⚔️ SPAWNED</span>`;
+        spawnPillHTML = `<span class="spawn-pill spawned-pill" id="countdown-${boss.id}" style="font-size: 1.1rem; padding: 6px 12px; font-weight: bold;">⚡ SPAWNED</span>`;
     } else {
-        spawnPillHTML = `<span class="spawn-pill blue-pill" id="countdown-${boss.id}">⏱️ ${formatHHmm(boss.next_spawn_time)}</span>`;
+        spawnPillHTML = `<span class="spawn-pill blue-pill" id="countdown-${boss.id}" style="font-size: 1.15rem; padding: 6px 12px; font-weight: bold; font-family: monospace;">⏱️ ${formatHHmm(boss.next_spawn_time)}</span>`;
     }
 
     tr.innerHTML = `
@@ -392,11 +447,12 @@ function createBossRow(boss, index) {
                 ${nameEn ? `<span class="boss-title-en">${nameEn}</span>` : ''}
             </div>
         </td>
-        <td style="text-align:center;">${spawnPillHTML}</td>
         <td style="text-align:center;">
-            <span class="death-pill">💀 ${lastDeathTimeStr}</span>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px 0;">
+                ${spawnPillHTML}
+                <span style="font-size: 0.75rem; color: #94a3b8;">ตายล่าสุด: ${lastDeathTimeStr}</span>
+            </div>
         </td>
-        <td class="rate-badge">${spawnRate}</td>
         <td style="text-align:center;"><span class="cd-badge">${respawnHours}</span></td>
         <td style="text-align:center;">
             <div class="action-cell">
@@ -411,6 +467,17 @@ function createBossRow(boss, index) {
 
 function updateCountdowns() {
     const now = Date.now();
+    
+    const currentPeriodState = checkAutoInvasionSchedule();
+    if (currentPeriodState !== lastAutoPeriodState) {
+        lastAutoPeriodState = currentPeriodState;
+        if (currentPeriodState && !isInvasionMode) {
+            window.toggleInvasionMode();
+        } else if (!currentPeriodState && isInvasionMode) {
+            window.toggleInvasionMode();
+        }
+    }
+
     const clockEl = document.getElementById('live-thai-clock');
     if (clockEl) {
         const thaiDate = new Date(now + (7 * 3600 * 1000));
@@ -571,7 +638,11 @@ window.openDeadModal = async function (id) {
     const hh = String(thaiDate.getUTCHours()).padStart(2, '0');
     const min = String(thaiDate.getUTCMinutes()).padStart(2, '0');
     
-    document.getElementById('dead-date').value = `${yyyy}-${mm}-${dd}`;
+    if (deadDateFP) {
+        deadDateFP.setDate(`${yyyy}-${mm}-${dd}`);
+    } else {
+        document.getElementById('dead-date').value = `${yyyy}-${mm}-${dd}`;
+    }
     document.getElementById('dead-time').value = `${hh}:${min}`;
     
     updateSpawnPreview();
@@ -695,7 +766,8 @@ async function handleConfirmDeath(e) {
 
     const payload = {
         last_death_time: trueDeathDate.toISOString(),
-        next_spawn_time: nextSpawnDate.toISOString()
+        next_spawn_time: nextSpawnDate.toISOString(),
+        use_first_spawn: false
     };
 
     const { error } = await supabaseClient.from('bosses').update(payload).eq('id', id);
@@ -749,7 +821,9 @@ window.skipSpawn = async function (id) {
     const nextSpawnDate = new Date(currentNext.getTime() + (minsToAdd * 60000));
 
     const payload = {
-        next_spawn_time: nextSpawnDate.toISOString()
+        last_death_time: currentNext.toISOString(),
+        next_spawn_time: nextSpawnDate.toISOString(),
+        use_first_spawn: false
     };
 
     const { error } = await supabaseClient.from('bosses').update(payload).eq('id', id);
@@ -844,4 +918,56 @@ window.openLogModal = async function() {
         `;
     });
     document.getElementById('log-table-body').innerHTML = html;
+}
+
+window.handleResetTimers = async function() {
+    const htmlContent = `
+        <div style="text-align: left; font-size: 1rem; color: #fff; margin-bottom: 1rem;">
+            เลือกเซิร์ฟเวอร์ที่ต้องการล้างเวลาบอส (ให้กลับไปเป็นสถานะ รอเกิด):
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 0.8rem; text-align: left; background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: #fff;">
+                <input type="radio" name="reset_server" value="home" checked> 🛡️ เซิร์ฟเวอร์เรา (Home)
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: #fca5a5;">
+                <input type="radio" name="reset_server" value="invasion"> ⚔️ เซิร์ฟศัตรู (Invasion)
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: #d8b4fe;">
+                <input type="radio" name="reset_server" value="both"> 🌍 ทั้งสองเซิร์ฟเวอร์
+            </label>
+        </div>
+    `;
+
+    const result = await swalDark.fire({
+        title: 'รีเซตเวลาบอสทั้งหมด?',
+        html: htmlContent,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'ยืนยันการรีเซต',
+        cancelButtonText: 'ยกเลิก',
+        confirmButtonColor: '#ef4444'
+    });
+
+    if (result.isConfirmed) {
+        const resetServer = document.querySelector('input[name="reset_server"]:checked').value;
+        
+        let query = supabaseClient.from('bosses').update({ last_death_time: null, next_spawn_time: null });
+        
+        if (resetServer === 'both') {
+            query = query.in('server_type', ['home', 'invasion']);
+        } else {
+            query = query.eq('server_type', resetServer);
+        }
+
+        const { error } = await query;
+
+        if (error) {
+            swalDark.fire('Error', "Error resetting timers: " + error.message, 'error');
+        } else {
+            const serverLabel = resetServer === 'both' ? 'ทั้งสองเซิร์ฟเวอร์' : (resetServer === 'home' ? 'เซิร์ฟเวอร์เรา' : 'เซิร์ฟศัตรู');
+            addLog("Reset", "All Bosses", `ล้างเวลาเกิดของบอสทั้งหมด (${serverLabel})`, resetServer === 'both' ? 'home' : resetServer);
+            swalDark.fire('สำเร็จ!', `ล้างเวลาเกิดบอส ${serverLabel} เรียบร้อยแล้ว`, 'success');
+            fetchBosses();
+        }
+    }
 }

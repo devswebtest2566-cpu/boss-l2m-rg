@@ -10,6 +10,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Flatpickr for Date inputs -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 </head>
 <body>
 
@@ -36,6 +40,7 @@
             </div>
             <div style="display: flex; gap: 10px;">
                 <button id="invasion-btn" class="btn outline-btn" onclick="toggleInvasionMode()" title="สลับโหมด Server Invasion" style="border: 1px solid #ef4444; color: #ef4444; background: transparent;">⚔️ Server Invasion</button>
+                <button id="reset-boss-btn" class="btn" style="background: #ef4444; color: white; display: none;">🔄 รีเซตเวลา</button>
                 <button id="add-boss-btn" class="btn secondary">+ เพิ่มบอส</button>
             </div>
         </div>
@@ -44,15 +49,13 @@
         <main id="main-content">
             <div class="split-view-container" id="split-view-container">
                 <div class="boss-table-container" id="home-table-container">
-                    <h2 class="table-title" id="home-title" style="display: none; color: #fff; text-align: center; margin-bottom: 1rem; font-size: 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">🛡️ เซิร์ฟเวอร์เรา (Home)</h2>
+                    <h2 class="table-title" id="home-title" style="display: none; color: #fff; text-align: center; font-size: 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding: 1.25rem 1rem; margin: 0; background: rgba(0,0,0,0.2);">🛡️ เซิร์ฟเวอร์เรา (Home)</h2>
                     <table class="boss-table">
                         <thead>
                             <tr>
                                 <th class="col-num">#</th>
                                 <th class="col-name">ชื่อบอส</th>
-                                <th class="col-spawn">⏰ เวลาที่จะเกิด</th>
-                                <th class="col-death">💀 เวลาตายล่าสุด</th>
-                                <th class="col-rate">🎲 % เกิด</th>
+                                <th class="col-spawn">⏰ เวลาเกิด / ตาย</th>
                                 <th class="col-cd">⏳ ชม.</th>
                                 <th class="col-action">จัดการ</th>
                             </tr>
@@ -64,15 +67,13 @@
                 </div>
 
                 <div class="boss-table-container" id="inv-table-container" style="display: none;">
-                    <h2 class="table-title" style="color: #ef4444; text-align: center; margin-bottom: 1rem; font-size: 1.1rem; border-bottom: 1px solid rgba(239,68,68,0.2); padding-bottom: 0.5rem;">⚔️ เซิร์ฟศัตรู (Invasion)</h2>
+                    <h2 class="table-title" style="color: #ef4444; text-align: center; font-size: 1.1rem; border-bottom: 1px solid rgba(239,68,68,0.2); padding: 1.25rem 1rem; margin: 0; background: rgba(0,0,0,0.2);">⚔️ เซิร์ฟศัตรู (Invasion)</h2>
                     <table class="boss-table invasion-table">
                         <thead>
                             <tr>
                                 <th class="col-num">#</th>
                                 <th class="col-name">ชื่อบอส</th>
-                                <th class="col-spawn">⏰ เวลาที่จะเกิด</th>
-                                <th class="col-death">💀 เวลาตายล่าสุด</th>
-                                <th class="col-rate">🎲 % เกิด</th>
+                                <th class="col-spawn">⏰ เวลาเกิด / ตาย</th>
                                 <th class="col-cd">⏳ ชม.</th>
                                 <th class="col-action">จัดการ</th>
                             </tr>
@@ -173,9 +174,9 @@
                 <div class="form-group">
                     <div id="dead-last-spawn" style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.75rem; text-align: center;"></div>
                     <label>วันที่และเวลาที่บอสตาย (แบบ 24 ชม.)</label>
-                    <div style="display: flex; gap: 10px;">
-                        <input type="date" id="dead-date" required style="flex: 1; padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.5); color: #fff; color-scheme: dark;">
-                        <input type="text" id="dead-time" placeholder="HH:mm" pattern="^([01]?[0-9]|2[0-3]):[0-5][0-9]$" required style="flex: 1; padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.5); color: #fff; text-align: center;">
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <input type="date" id="dead-date" required style="flex: 1; min-width: 120px; padding: 1rem; font-size: 1.1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.5); color: #fff; color-scheme: dark; text-align: center; letter-spacing: 1px;">
+                        <input type="text" id="dead-time" placeholder="HH:mm" pattern="^([01]?[0-9]|2[0-3]):[0-5][0-9]$" required style="flex: 1; min-width: 100px; padding: 1rem; font-size: 1.1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.5); color: #fff; text-align: center; letter-spacing: 2px;">
                     </div>
                     <div id="dead-spawn-preview" style="color: var(--accent-cyan); font-size: 0.85rem; margin-top: 8px; text-align: center; min-height: 1.2rem;"></div>
                 </div>
