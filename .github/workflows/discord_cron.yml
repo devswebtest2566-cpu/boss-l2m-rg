@@ -11,6 +11,6 @@ jobs:
     steps:
       - name: Trigger Discord Alert Edge Function
         run: |
-          curl -i -X POST 'https://farewcumdwtdpfcycsmi.supabase.co/functions/v1/discord-hourly-alert' \
+          curl -i -X POST 'https://iarewcumdwtdpfcycsmi.supabase.co/functions/v1/discord-hourly-alert' \
             -H 'Authorization: Bearer sb_publishable_2R9yxtZpeeXq1L47fpT_7g_8juD6uZq' \
             -H 'Content-Type: application/json'
