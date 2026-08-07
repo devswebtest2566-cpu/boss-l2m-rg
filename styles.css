@@ -493,3 +493,28 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 1rem; }
     box-shadow: 0 0 8px rgba(244, 63, 94, 0.8);
     width: 100% !important;
 }
+
+/* Styled No Time Button (Glowing Purple Pill) */
+.btn-no-time,
+.swal2-container .swal2-actions button.swal2-deny,
+.swal2-container .swal2-actions button.swal2-deny.swal2-styled {
+    background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%) !important;
+    color: #ffffff !important;
+    border: none !important;
+    outline: none !important;
+    border-radius: 20px !important;
+    padding: 8px 18px !important;
+    font-size: 0.9rem !important;
+    font-weight: 700 !important;
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.5) !important;
+    transition: all 0.25s ease !important;
+    cursor: pointer !important;
+}
+
+.btn-no-time:hover,
+.swal2-container .swal2-actions button.swal2-deny:hover,
+.swal2-container .swal2-actions button.swal2-deny.swal2-styled:hover {
+    background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%) !important;
+    box-shadow: 0 0 22px rgba(168, 85, 247, 0.8) !important;
+    transform: translateY(-2px) !important;
+}

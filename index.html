@@ -41,7 +41,7 @@
             </div>
             <div style="display: flex; gap: 10px;">
                 <button id="invasion-btn" class="btn outline-btn" onclick="toggleInvasionMode()" title="สลับโหมด Server Invasion" style="border: 1px solid #ef4444; color: #ef4444; background: transparent;">⚔️ Server Invasion</button>
-                <button id="reset-boss-btn" class="btn" style="background: #ef4444; color: white; display: none;">🔄 รีเซตเวลา</button>
+                <button id="reset-boss-btn" class="btn" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; display: none;">🔄 รีเซตหลังเปิดเซิฟ</button>
                 <button id="add-boss-btn" class="btn secondary">+ เพิ่มบอส</button>
             </div>
         </div>
@@ -183,7 +183,42 @@
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn" style="background:#cbd5e1;color:#334155;" onclick="closeModal('dead-modal')">ยกเลิก</button>
+                    <button type="button" id="btn-no-time-dead" class="btn btn-no-time" style="display:none;" onclick="handleNoTimeDeath()">🚫 ไม่ระบุเวลา (--:--)</button>
                     <button type="submit" class="btn secondary">ยืนยันบอสตาย</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Reset Server Maintenance Modal -->
+    <div id="reset-server-modal" class="modal">
+        <div class="modal-content" style="max-width: 500px; width: 90%;">
+            <h2 style="margin-top:0; color: #facc15; text-align: center;">🔄 รีเซ็ตเวลาหลังเปิดเซิฟเวอร์</h2>
+            <form id="reset-server-form">
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label style="color: var(--accent-cyan); font-weight: 600; display: block; margin-bottom: 6px;">🎮 1. เวลาเปิดเซิฟให้เข้าเล่นได้ (เกิดทันที)</label>
+                    <input type="text" id="reset-playable-time" placeholder="เลือก วัน-เวลา ที่เข้าเล่นได้" required style="padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.5); color: #fff; font-size: 1rem; width: 100%; text-align: center;">
+                    <small style="color: #94a3b8; font-size: 0.75rem; margin-top: 4px; display: block;">* สำหรับบอสที่ไม่มีเวลาเกิดครั้งแรก (จะเปลี่ยนเป็น SPAWNED ทันที)</small>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label style="color: var(--accent-gold); font-weight: 600; display: block; margin-bottom: 6px;">⚙️ 2. เวลาเปิดเซิฟจริง (สำหรับบอสเกิดครั้งแรก)</label>
+                    <input type="text" id="reset-actual-time" placeholder="เลือก วัน-เวลา ที่ระบบเปิดจริง" required style="padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.5); color: #fff; font-size: 1rem; width: 100%; text-align: center;">
+                    <small style="color: #94a3b8; font-size: 0.75rem; margin-top: 4px; display: block;">* สำหรับบอสที่มีกำหนดเวลาเกิดครั้งแรก (เวลานี้ + เวลาเกิดครั้งแรก)</small>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label style="color: #fff; font-weight: 600; display: block; margin-bottom: 6px;">🌐 ขอบเขตการรีเซ็ต</label>
+                    <select id="reset-scope" style="padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.8); color: #fff; font-size: 1rem; width: 100%;">
+                        <option value="all">🌐 บอสทั้งหมด (Home & Invasion)</option>
+                        <option value="home">🛡️ เฉพาะเซิร์ฟเวอร์เรา (Home Only)</option>
+                        <option value="invasion">⚔️ เฉพาะเซิร์ฟเวอร์ศัตรู (Invasion Only)</option>
+                    </select>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn" style="background:#cbd5e1;color:#334155;" onclick="closeModal('reset-server-modal')">ยกเลิก</button>
+                    <button type="submit" class="btn" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; font-weight: bold;">ยืนยันการรีเซ็ต</button>
                 </div>
             </form>
         </div>

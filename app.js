@@ -16,6 +16,8 @@ let countdownInterval = null;
 let searchQuery = '';
 let lastAutoPeriodState = false;
 let deadDateFP = null;
+let resetPlayableFP = null;
+let resetActualFP = null;
 
 let isSoundEnabled = localStorage.getItem('isSoundEnabled') !== 'false';
 let alerted5MinBosses = new Set();
@@ -110,9 +112,44 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const resetPlayableEl = document.getElementById('reset-playable-time');
+    const resetActualEl = document.getElementById('reset-actual-time');
+    
+    if (resetPlayableEl) {
+        resetPlayableFP = flatpickr(resetPlayableEl, {
+            enableTime: true,
+            dateFormat: "Y-m-d H:i",
+            altInput: true,
+            altFormat: "d/m/Y H:i",
+            disableMobile: "true",
+            time_24hr: true
+        });
+    }
+
+    if (resetActualEl) {
+        resetActualFP = flatpickr(resetActualEl, {
+            enableTime: true,
+            dateFormat: "Y-m-d H:i",
+            altInput: true,
+            altFormat: "d/m/Y H:i",
+            disableMobile: "true",
+            time_24hr: true
+        });
+    }
+
     const resetBossBtn = document.getElementById('reset-boss-btn');
     if (resetBossBtn) {
-        resetBossBtn.addEventListener('click', handleResetTimers);
+        resetBossBtn.addEventListener('click', () => {
+            const now = new Date();
+            if (resetPlayableFP) resetPlayableFP.setDate(now);
+            if (resetActualFP) resetActualFP.setDate(now);
+            openModal('reset-server-modal');
+        });
+    }
+
+    const resetServerForm = document.getElementById('reset-server-form');
+    if (resetServerForm) {
+        resetServerForm.addEventListener('submit', handleConfirmServerReset);
     }
 
     if (searchInput) {
@@ -731,10 +768,48 @@ function updateSpawnPreview() {
         const nm = String(nextThaiDate.getUTCMinutes()).padStart(2, '0');
         
         previewEl.textContent = `⚡ เกิดรอบถัดไป: ${nDD}/${nMM} ${nh}:${nm}`;
+
+        // Check if boss is Invasion & next spawn is past midnight of death date
+        const bossId = document.getElementById('dead-boss-id').value;
+        const currentBoss = bosses.find(b => b.id === bossId);
+        const noTimeBtn = document.getElementById('btn-no-time-dead');
+
+        const deathDateEndMs = Date.UTC(y, m - 1, d, 23, 59, 59, 999) - (7 * 3600 * 1000);
+        const isPastMidnight = nextSpawnMs > deathDateEndMs;
+
+        if (currentBoss && currentBoss.server_type === 'invasion' && isPastMidnight) {
+            if (noTimeBtn) noTimeBtn.style.display = 'inline-block';
+        } else {
+            if (noTimeBtn) noTimeBtn.style.display = 'none';
+        }
     } else {
         previewEl.textContent = '';
+        const noTimeBtn = document.getElementById('btn-no-time-dead');
+        if (noTimeBtn) noTimeBtn.style.display = 'none';
     }
 }
+
+window.handleNoTimeDeath = async function() {
+    if (!supabaseClient) return;
+    const id = document.getElementById('dead-boss-id').value;
+    const boss = bosses.find(b => b.id === id);
+    if (!boss) return;
+
+    const payload = {
+        last_death_time: null,
+        next_spawn_time: null,
+        use_first_spawn: false
+    };
+
+    const { error } = await supabaseClient.from('bosses').update(payload).eq('id', id);
+    if (error) {
+        swalDark.fire('Error', "Error resetting time: " + error.message, 'error');
+    } else {
+        addLog("ClearTimer", boss.name, "ตั้งค่าไม่ระบุเวลา (--:--) (ข้ามเที่ยงคืน)", boss.server_type);
+        closeModal('dead-modal');
+        fetchBosses();
+    }
+};
 
 // Add event listener once
 const deadTimeInput = document.getElementById('dead-time');
@@ -963,18 +1038,31 @@ window.skipSpawn = async function (id) {
     const currentNext = new Date(boss.next_spawn_time);
     const minsToAdd = boss.regular_respawn_mins || 0;
     const nextSpawnDate = new Date(currentNext.getTime() + (minsToAdd * 60000));
-    const nextSpawnFormatted = formatHHmm(nextSpawnDate.toISOString());
+    
+    // Format DD/MM HH:mm
+    const thaiNextDate = getThaiDateFromUTC(nextSpawnDate);
+    const nDD = String(thaiNextDate.getUTCDate()).padStart(2, '0');
+    const nMM = String(thaiNextDate.getUTCMonth() + 1).padStart(2, '0');
+    const nh = String(thaiNextDate.getUTCHours()).padStart(2, '0');
+    const nm = String(thaiNextDate.getUTCMinutes()).padStart(2, '0');
+    const displayFormatted = `${nDD}/${nMM} ${nh}:${nm}`;
     
     let htmlContent = `ต้องการบวกเวลาเกิด (Skip) ของ <span style="color: #facc15;">${boss.name}</span> ไปรอบถัดไปใช่หรือไม่?<br><br>
-    <div style="background: rgba(0, 242, 254, 0.1); border: 1px solid rgba(0, 242, 254, 0.3); color: #00f2fe; padding: 8px; border-radius: 8px; display: inline-block; font-size: 0.95rem;">
-        ⚡ เกิดรอบถัดไป: <strong>${nextSpawnFormatted}</strong>
+    <div style="background: rgba(0, 242, 254, 0.1); border: 1px solid rgba(0, 242, 254, 0.3); color: #00f2fe; padding: 8px 14px; border-radius: 8px; display: inline-block; font-size: 0.95rem;">
+        ⚡ เกิดรอบถัดไป: <strong>${displayFormatted}</strong>
     </div>`;
     
     if (isEarly) {
         htmlContent = `<p style="color: #f59e0b; margin-bottom: 12px; font-weight: bold;">⚠️ บอสยังไม่ถึงเวลาเกิด!</p>` + htmlContent;
     }
 
-    const result = await swalDark.fire({
+    // Check if Invasion boss and nextSpawnDate passes midnight (Thai time) of currentNext
+    const thaiCurrentNext = getThaiDateFromUTC(currentNext);
+    const endOfThaiDayMs = Date.UTC(thaiCurrentNext.getUTCFullYear(), thaiCurrentNext.getUTCMonth(), thaiCurrentNext.getUTCDate(), 23, 59, 59, 999) - (7 * 3600 * 1000);
+    const isPastMidnight = nextSpawnDate.getTime() > endOfThaiDayMs;
+    const showNoTimeBtn = (boss.server_type === 'invasion') && isPastMidnight;
+
+    const swalOptions = {
         title: 'ยืนยันบอสไม่เกิด?',
         html: htmlContent,
         icon: isEarly ? 'warning' : 'question',
@@ -982,7 +1070,32 @@ window.skipSpawn = async function (id) {
         confirmButtonText: 'ยืนยัน (ไม่เกิด)',
         cancelButtonText: 'ยกเลิก',
         confirmButtonColor: isEarly ? '#f59e0b' : '#2563eb'
-    });
+    };
+
+    if (showNoTimeBtn) {
+        swalOptions.showDenyButton = true;
+        swalOptions.denyButtonText = '🚫 ไม่ระบุเวลา (--:--)';
+        swalOptions.denyButtonColor = '#64748b';
+    }
+
+    const result = await swalDark.fire(swalOptions);
+
+    if (result.isDenied) {
+        const payload = {
+            last_death_time: null,
+            next_spawn_time: null,
+            use_first_spawn: false
+        };
+        const { error } = await supabaseClient.from('bosses').update(payload).eq('id', id);
+        if (error) {
+            swalDark.fire('Error', "Error resetting time: " + error.message, 'error');
+        } else {
+            addLog("ClearTimer", boss.name, "ตั้งค่าไม่ระบุเวลา (--:--) (ข้ามเที่ยงคืน)", boss.server_type);
+            fetchBosses();
+        }
+        return;
+    }
+
     if (!result.isConfirmed) return;
 
     const payload = {
@@ -1093,54 +1206,84 @@ window.openLogModal = async function() {
     document.getElementById('log-table-body').innerHTML = html;
 }
 
-window.handleResetTimers = async function() {
-    const htmlContent = `
-        <div style="text-align: left; font-size: 1rem; color: #fff; margin-bottom: 1rem;">
-            เลือกเซิร์ฟเวอร์ที่ต้องการล้างเวลาบอส (ให้กลับไปเป็นสถานะ รอเกิด):
-        </div>
-        <div style="display: flex; flex-direction: column; gap: 0.8rem; text-align: left; background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px;">
-            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: #fff;">
-                <input type="radio" name="reset_server" value="home" checked> 🛡️ เซิร์ฟเวอร์เรา (Home)
-            </label>
-            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: #fca5a5;">
-                <input type="radio" name="reset_server" value="invasion"> ⚔️ เซิร์ฟศัตรู (Invasion)
-            </label>
-            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: #d8b4fe;">
-                <input type="radio" name="reset_server" value="both"> 🌍 ทั้งสองเซิร์ฟเวอร์
-            </label>
-        </div>
-    `;
+window.handleConfirmServerReset = async function(e) {
+    e.preventDefault();
+    if (!supabaseClient) return;
 
-    const result = await swalDark.fire({
-        title: 'รีเซตเวลาบอสทั้งหมด?',
-        html: htmlContent,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'ยืนยันการรีเซต',
-        cancelButtonText: 'ยกเลิก',
-        confirmButtonColor: '#ef4444'
+    const playableDate = resetPlayableFP ? resetPlayableFP.selectedDates[0] : null;
+    const actualDate = resetActualFP ? resetActualFP.selectedDates[0] : null;
+    const scope = document.getElementById('reset-scope').value;
+
+    if (!playableDate || !actualDate) {
+        swalDark.fire('กรุณาเลือกเวลา', 'กรุณาระบุวัน-เวลาให้ครบทั้ง 2 ช่อง', 'warning');
+        return;
+    }
+
+    let targetBosses = bosses.filter(b => b.is_active);
+    if (scope === 'home') {
+        targetBosses = targetBosses.filter(b => b.server_type !== 'invasion');
+    } else if (scope === 'invasion') {
+        targetBosses = targetBosses.filter(b => b.server_type === 'invasion');
+    }
+
+    if (targetBosses.length === 0) {
+        swalDark.fire('ไม่พบข้อมูล', 'ไม่พบบอสในขอบเขตที่เลือก', 'warning');
+        return;
+    }
+
+    swalDark.fire({
+        title: '⏳ กำลังรีเซ็ตเวลาหลังเปิดเซิฟ...',
+        text: `กำลังคำนวณและอัปเดตบอส ${targetBosses.length} ตัว`,
+        allowOutsideClick: false,
+        didOpen: () => swalDark.showLoading()
     });
 
-    if (result.isConfirmed) {
-        const resetServer = document.querySelector('input[name="reset_server"]:checked').value;
-        
-        let query = supabaseClient.from('bosses').update({ last_death_time: null, next_spawn_time: null });
-        
-        if (resetServer === 'both') {
-            query = query.in('server_type', ['home', 'invasion']);
-        } else {
-            query = query.eq('server_type', resetServer);
+    try {
+        for (const boss of targetBosses) {
+            const hasFirstSpawn = (boss.first_spawn_mins && boss.first_spawn_mins > 0);
+            let nextSpawnISO = null;
+            let useFirstSpawnFlag = false;
+
+            if (hasFirstSpawn) {
+                // บอสมีเวลาเกิดครั้งแรก -> ใช้เวลาเปิดเซิฟจริง + first_spawn_mins
+                const spawnTime = new Date(actualDate.getTime() + (boss.first_spawn_mins * 60 * 1000));
+                nextSpawnISO = spawnTime.toISOString();
+                useFirstSpawnFlag = true;
+            } else {
+                // บอสไม่มีเวลาเกิดครั้งแรก -> เกิดทันทีเมื่อเปิดเซิฟให้เข้าเล่นได้
+                nextSpawnISO = playableDate.toISOString();
+                useFirstSpawnFlag = false;
+            }
+
+            await supabaseClient
+                .from('bosses')
+                .update({
+                    next_spawn_time: nextSpawnISO,
+                    use_first_spawn: useFirstSpawnFlag,
+                    last_death_time: null
+                })
+                .eq('id', boss.id);
         }
 
-        const { error } = await query;
+        // Add Log History
+        const scopeLabel = scope === 'all' ? 'ทั้งหมด' : (scope === 'home' ? 'เซิร์ฟเรา' : 'เซิร์ฟศัตรู');
+        const playableStr = formatHHmm(playableDate);
+        const actualStr = formatHHmm(actualDate);
+        await addLog('ResetServer', 'รีเซ็ตเวลาหลังเปิดเซิฟ', `เปิดเข้าเล่น: ${playableStr} | เปิดจริง: ${actualStr} (${scopeLabel})`, scope === 'all' ? 'home' : scope);
 
-        if (error) {
-            swalDark.fire('Error', "Error resetting timers: " + error.message, 'error');
-        } else {
-            const serverLabel = resetServer === 'both' ? 'ทั้งสองเซิร์ฟเวอร์' : (resetServer === 'home' ? 'เซิร์ฟเวอร์เรา' : 'เซิร์ฟศัตรู');
-            addLog("Reset", "All Bosses", `ล้างเวลาเกิดของบอสทั้งหมด (${serverLabel})`, resetServer === 'both' ? 'home' : resetServer);
-            swalDark.fire('สำเร็จ!', `ล้างเวลาเกิดบอส ${serverLabel} เรียบร้อยแล้ว`, 'success');
-            fetchBosses();
-        }
+        await fetchBosses();
+        closeModal('reset-server-modal');
+
+        swalDark.fire({
+            icon: 'success',
+            title: '🔄 รีเซ็ตเวลาสำเร็จ!',
+            text: `อัปเดตเวลารีเซ็ตบอส ${scopeLabel} เรียบร้อยแล้ว`,
+            timer: 2000,
+            showConfirmButton: false
+        });
+
+    } catch (err) {
+        console.error("Reset server error:", err);
+        swalDark.fire('เกิดข้อผิดพลาด', err.message || 'ไม่สามารถรีเซ็ตเวลาได้', 'error');
     }
 }
