@@ -1285,3 +1285,32 @@ window.handleConfirmServerReset = async function(e) {
         swalDark.fire('เกิดข้อผิดพลาด', err.message || 'ไม่สามารถรีเซ็ตเวลาได้', 'error');
     }
 }
+
+// --- Disable DevTools & Right Click Protection ---
+document.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+});
+
+document.addEventListener('keydown', (e) => {
+    // F12
+    if (e.key === 'F12' || e.keyCode === 123) {
+        e.preventDefault();
+        return false;
+    }
+    // Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C (Inspect/Console/Elements)
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (
+        e.key === 'I' || e.key === 'i' ||
+        e.key === 'J' || e.key === 'j' ||
+        e.key === 'C' || e.key === 'c' ||
+        e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67
+    )) {
+        e.preventDefault();
+        return false;
+    }
+    // Ctrl+U (View Source)
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'U' || e.key === 'u' || e.keyCode === 85)) {
+        e.preventDefault();
+        return false;
+    }
+});
+
