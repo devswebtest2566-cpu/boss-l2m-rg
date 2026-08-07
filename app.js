@@ -17,6 +17,10 @@ let searchQuery = '';
 let lastAutoPeriodState = false;
 let deadDateFP = null;
 
+let isSoundEnabled = localStorage.getItem('isSoundEnabled') !== 'false';
+let alerted5MinBosses = new Set();
+let lastSoundPlayTime = 0;
+
 function checkAutoInvasionSchedule() {
     const now = Date.now();
     const thaiDate = new Date(now + (7 * 3600 * 1000));
@@ -297,6 +301,7 @@ function showDashboard() {
         }, 50);
     }
     fetchBosses();
+    updateSoundBtnUI();
     initRealtime(); // เริ่มต้นระบบ Realtime
 }
 
@@ -410,10 +415,20 @@ function renderBosses() {
 
 function createBossRow(boss, index) {
     const tr = document.createElement('tr');
-    tr.className = `boss-row`;
     tr.dataset.id = boss.id;
 
     const nextSpawnTime = boss.next_spawn_time ? new Date(boss.next_spawn_time).getTime() : 0;
+    
+    // Check if spawning in current hour
+    const now = Date.now();
+    const startOfHour = new Date(now);
+    startOfHour.setMinutes(0, 0, 0);
+    const startOfNextHour = new Date(startOfHour);
+    startOfNextHour.setHours(startOfNextHour.getHours() + 1);
+    
+    const isInHour = nextSpawnTime >= startOfHour.getTime() && nextSpawnTime < startOfNextHour.getTime();
+    tr.className = `boss-row${isInHour ? ' in-hour-highlight' : ''}`;
+
     const lastDeathTimeStr = boss.last_death_time ? formatHHmm(boss.last_death_time) : '--:--';
     const updatedDateStr = boss.last_death_time ? formatDate(boss.last_death_time) : '-';
 
@@ -431,7 +446,6 @@ function createBossRow(boss, index) {
 
     // Spawn Pill Format
     let spawnPillHTML = '';
-    const now = Date.now();
 
     if (nextSpawnTime > 0 && nextSpawnTime <= now) {
         spawnPillHTML = `<span class="spawn-pill spawned-pill" id="countdown-${boss.id}" style="font-size: 0.95rem; padding: 4px 10px; font-weight: bold;">⚡ SPAWNED</span>`;
@@ -448,8 +462,11 @@ function createBossRow(boss, index) {
             </div>
         </td>
         <td style="text-align:center;">
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px 0;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 0;">
                 ${spawnPillHTML}
+                <div class="boss-progress-bar-track" title="ความคืบหน้านับถอยหลัง">
+                    <div class="boss-progress-bar-fill" id="progress-bar-${boss.id}"></div>
+                </div>
                 <span style="font-size: 0.75rem; color: #94a3b8;">ตายล่าสุด: ${lastDeathTimeStr}</span>
             </div>
         </td>
@@ -463,6 +480,80 @@ function createBossRow(boss, index) {
         </td>
     `;
     return tr;
+}
+
+window.toggleSoundNotification = function() {
+    isSoundEnabled = !isSoundEnabled;
+    localStorage.setItem('isSoundEnabled', isSoundEnabled);
+    updateSoundBtnUI();
+};
+
+function updateSoundBtnUI() {
+    const btn = document.getElementById('sound-toggle-btn');
+    if (!btn) return;
+    if (isSoundEnabled) {
+        btn.textContent = '🔔 เสียง: เปิด';
+        btn.style.background = 'rgba(16, 185, 129, 0.15)';
+        btn.style.color = '#10b981';
+        btn.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+    } else {
+        btn.textContent = '🔕 เสียง: ปิด';
+        btn.style.background = 'rgba(148, 163, 184, 0.15)';
+        btn.style.color = '#94a3b8';
+        btn.style.borderColor = 'rgba(148, 163, 184, 0.4)';
+    }
+}
+
+function playBossSpawnSound() {
+    if (!isSoundEnabled) return;
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        if (ctx.state === 'suspended') {
+            ctx.resume();
+        }
+        
+        const now = ctx.currentTime;
+        
+        // Chime Note 1 (E5)
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(659.25, now);
+        gain1.gain.setValueAtTime(0.3, now);
+        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.4);
+
+        // Chime Note 2 (B5)
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(987.77, now + 0.15);
+        gain2.gain.setValueAtTime(0.3, now + 0.15);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start(now + 0.15);
+        osc2.stop(now + 0.6);
+
+        // Chime Note 3 (E6)
+        const osc3 = ctx.createOscillator();
+        const gain3 = ctx.createGain();
+        osc3.type = 'sine';
+        osc3.frequency.setValueAtTime(1318.51, now + 0.3);
+        gain3.gain.setValueAtTime(0.4, now + 0.3);
+        gain3.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+        osc3.connect(gain3);
+        gain3.connect(ctx.destination);
+        osc3.start(now + 0.3);
+        osc3.stop(now + 0.8);
+    } catch (e) {
+        console.error("Web Audio error:", e);
+    }
 }
 
 function updateCountdowns() {
@@ -487,6 +578,13 @@ function updateCountdowns() {
         clockEl.textContent = `🕒 ${hh}:${mm}:${ss}`;
     }
 
+    let hasNew5MinWarning = false;
+
+    const startOfHour = new Date(now);
+    startOfHour.setMinutes(0, 0, 0);
+    const startOfNextHour = new Date(startOfHour);
+    startOfNextHour.setHours(startOfNextHour.getHours() + 1);
+
     bosses.forEach(boss => {
         if (!boss.is_active) return;
 
@@ -499,11 +597,64 @@ function updateCountdowns() {
         }
 
         const nextSpawn = new Date(boss.next_spawn_time).getTime();
+        const warning5MinTime = nextSpawn - (5 * 60 * 1000); // 5 นาที ก่อนเกิด
+
+        // Toggle in-hour-highlight on row element dynamically
+        const trRow = el.closest('tr');
+        if (trRow) {
+            const isInHour = nextSpawn >= startOfHour.getTime() && nextSpawn < startOfNextHour.getTime();
+            if (isInHour) {
+                trRow.classList.add('in-hour-highlight');
+            } else {
+                trRow.classList.remove('in-hour-highlight');
+            }
+        }
+
+        // Update Progress Bar Fill
+        const progressEl = document.getElementById(`progress-bar-${boss.id}`);
+        if (progressEl) {
+            const respawnMins = boss.regular_respawn_mins || 60;
+            const totalDurationMs = respawnMins * 60 * 1000;
+            const cycleStart = nextSpawn - totalDurationMs;
+            const elapsed = now - cycleStart;
+            let percent = Math.min(100, Math.max(0, (elapsed / totalDurationMs) * 100));
+
+            if (nextSpawn <= now) {
+                progressEl.className = "boss-progress-bar-fill spawned";
+            } else {
+                progressEl.style.width = `${percent.toFixed(1)}%`;
+                const remainingMs = nextSpawn - now;
+                if (remainingMs <= 60 * 60 * 1000) { // < 1 ชั่วโมง เปลี่ยนเป็นสีเหลือง-ส้ม
+                    progressEl.className = "boss-progress-bar-fill warning";
+                } else {
+                    progressEl.className = "boss-progress-bar-fill";
+                }
+            }
+        }
+
         if (nextSpawn <= now) {
             el.className = "spawn-pill spawned-pill";
             el.textContent = "⚡ SPAWNED";
         }
+
+        // เช็กการเตือนล่วงหน้า 5 นาที
+        if (now >= warning5MinTime && now < nextSpawn) {
+            const alertKey = `5m-${boss.id}-${boss.next_spawn_time}`;
+            if (!alerted5MinBosses.has(alertKey)) {
+                alerted5MinBosses.add(alertKey);
+                hasNew5MinWarning = true;
+            }
+        }
     });
+
+    // หากมีบอสเพิ่งเข้าสู่ช่วง 5 นาทีก่อนเกิด
+    if (hasNew5MinWarning) {
+        const COOLDOWN_MS = 90 * 1000; // Cooldown 90 วินาที ป้องกันเสียงดังซ้ำถี่เกินไปกรณีบอสเกิดติดๆ กัน
+        if (now - lastSoundPlayTime >= COOLDOWN_MS) {
+            playBossSpawnSound();
+            lastSoundPlayTime = now;
+        }
+    }
 }
 
 // --- Date Helper Formats ---
@@ -809,9 +960,18 @@ window.skipSpawn = async function (id) {
     const nextTime = new Date(boss.next_spawn_time).getTime();
     const isEarly = nextTime > Date.now();
     
-    let htmlContent = `ต้องการบวกเวลาเกิด (Skip) ของ ${boss.name} ไปรอบถัดไปใช่หรือไม่?`;
+    const currentNext = new Date(boss.next_spawn_time);
+    const minsToAdd = boss.regular_respawn_mins || 0;
+    const nextSpawnDate = new Date(currentNext.getTime() + (minsToAdd * 60000));
+    const nextSpawnFormatted = formatHHmm(nextSpawnDate.toISOString());
+    
+    let htmlContent = `ต้องการบวกเวลาเกิด (Skip) ของ <span style="color: #facc15;">${boss.name}</span> ไปรอบถัดไปใช่หรือไม่?<br><br>
+    <div style="background: rgba(0, 242, 254, 0.1); border: 1px solid rgba(0, 242, 254, 0.3); color: #00f2fe; padding: 8px; border-radius: 8px; display: inline-block; font-size: 0.95rem;">
+        ⚡ เกิดรอบถัดไป: <strong>${nextSpawnFormatted}</strong>
+    </div>`;
+    
     if (isEarly) {
-        htmlContent = `<p style="color: #f59e0b; margin-bottom: 10px;">⚠️ บอสยังไม่ถึงเวลาเกิด!</p>` + htmlContent;
+        htmlContent = `<p style="color: #f59e0b; margin-bottom: 12px; font-weight: bold;">⚠️ บอสยังไม่ถึงเวลาเกิด!</p>` + htmlContent;
     }
 
     const result = await swalDark.fire({
@@ -824,13 +984,6 @@ window.skipSpawn = async function (id) {
         confirmButtonColor: isEarly ? '#f59e0b' : '#2563eb'
     });
     if (!result.isConfirmed) return;
-
-    const currentNext = new Date(boss.next_spawn_time);
-    
-    // ใช้ "เวลาปกติที่จะเกิด" เสมอในการกดข้ามรอบ (ตามที่แจ้งมา)
-    const minsToAdd = boss.regular_respawn_mins || 0;
-
-    const nextSpawnDate = new Date(currentNext.getTime() + (minsToAdd * 60000));
 
     const payload = {
         last_death_time: currentNext.toISOString(),
@@ -917,14 +1070,22 @@ window.openLogModal = async function() {
         if (actionLabel === 'Edit') { actionLabel = 'แก้ไข'; actionColor = '#eab308'; }
         if (actionLabel === 'Delete') { actionLabel = 'ลบ'; actionColor = '#ef4444'; }
         
+        let serverBadge = '';
+        if (log.server_context === 'invasion') {
+            serverBadge = `<span style="font-size: 0.65rem; background: rgba(239, 68, 68, 0.15); color: #fca5a5; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(239, 68, 68, 0.3); margin-right: 6px; white-space: nowrap;">⚔️ ศัตรู</span>`;
+        } else {
+            serverBadge = `<span style="font-size: 0.65rem; background: rgba(0, 242, 254, 0.1); color: #00f2fe; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(0, 242, 254, 0.3); margin-right: 6px; white-space: nowrap;">🛡️ เรา</span>`;
+        }
+        
         html += `
             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
                 <td style="padding: 8px; font-size: 0.8rem; color: #94a3b8;">${formattedTime}</td>
                 <td style="padding: 8px; font-weight: 500;">${log.boss_name}</td>
                 <td style="padding: 8px; color: #a78bfa;">${log.editor_name}</td>
                 <td style="padding: 8px;">
-                    <span style="color: ${actionColor}; font-size:0.75rem; border: 1px solid ${actionColor}; padding: 2px 6px; border-radius: 4px; margin-right: 6px;">${actionLabel}</span>
-                    <span style="font-size:0.85rem; color:#e2e8f0;">${log.details || ''}</span>
+                    ${serverBadge}
+                    <span style="color: ${actionColor}; font-size:0.75rem; border: 1px solid ${actionColor}; padding: 2px 6px; border-radius: 4px; margin-right: 6px; white-space: nowrap;">${actionLabel}</span>
+                    <span style="font-size:0.85rem; color:#e2e8f0; word-break: break-word;">${log.details || ''}</span>
                 </td>
             </tr>
         `;
