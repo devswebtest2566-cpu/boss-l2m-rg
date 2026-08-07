@@ -507,32 +507,44 @@ function updateCountdowns() {
 }
 
 // --- Date Helper Formats ---
+function getThaiDateFromUTC(dateInput) {
+    const d = new Date(dateInput);
+    return new Date(d.getTime() + (7 * 3600 * 1000));
+}
+
 function formatHHmm(dateInput) {
     if (!dateInput) return '--:--';
-    const d = new Date(dateInput);
-    const timeStr = d.toLocaleTimeString('en-GB', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit' });
+    const thaiDate = getThaiDateFromUTC(dateInput);
+    const nowThaiDate = getThaiDateFromUTC(Date.now());
     
-    const now = new Date();
-    const dThaiDate = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
-    const nowThaiDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+    const hh = String(thaiDate.getUTCHours()).padStart(2, '0');
+    const min = String(thaiDate.getUTCMinutes()).padStart(2, '0');
+    const timeStr = `${hh}:${min}`;
     
-    if (dThaiDate.toDateString() === nowThaiDate.toDateString()) {
+    if (thaiDate.getUTCFullYear() === nowThaiDate.getUTCFullYear() &&
+        thaiDate.getUTCMonth() === nowThaiDate.getUTCMonth() &&
+        thaiDate.getUTCDate() === nowThaiDate.getUTCDate()) {
         return timeStr;
     } else {
-        const dd = String(dThaiDate.getDate()).padStart(2, '0');
-        const mm = String(dThaiDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(thaiDate.getUTCDate()).padStart(2, '0');
+        const mm = String(thaiDate.getUTCMonth() + 1).padStart(2, '0');
         return `${dd}/${mm} ${timeStr}`;
     }
 }
 
 function formatDate(dateInput) {
     if (!dateInput) return '-';
-    const d = new Date(dateInput);
-    const day = d.toLocaleDateString('en-GB', { timeZone: 'Asia/Bangkok', day: '2-digit' });
-    const month = d.toLocaleDateString('en-US', { timeZone: 'Asia/Bangkok', month: 'short' });
-    const yr = d.toLocaleDateString('en-GB', { timeZone: 'Asia/Bangkok', year: '2-digit' });
-    const time = d.toLocaleTimeString('en-GB', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit' });
-    return `${day}/${month}/${yr} ${time}`;
+    const thaiDate = getThaiDateFromUTC(dateInput);
+    
+    const dd = String(thaiDate.getUTCDate()).padStart(2, '0');
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const month = months[thaiDate.getUTCMonth()];
+    const yr = String(thaiDate.getUTCFullYear()).slice(-2);
+    
+    const hh = String(thaiDate.getUTCHours()).padStart(2, '0');
+    const min = String(thaiDate.getUTCMinutes()).padStart(2, '0');
+    
+    return `${dd}/${month}/${yr} ${hh}:${min}`;
 }
 
 // --- Modals Logic ---
