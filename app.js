@@ -69,10 +69,11 @@ const swalDark = Swal.mixin({
     color: '#f8fafc',
     backdrop: 'rgba(0,0,0,0.8)',
     customClass: {
-        confirmButton: 'btn primary',
-        cancelButton: 'btn secondary'
+        confirmButton: 'btn secondary',
+        cancelButton: 'btn btn-cancel'
     },
-    buttonsStyling: false
+    buttonsStyling: false,
+    reverseButtons: true
 });
 
 const bossTableBody = document.getElementById('boss-table-body');
@@ -833,8 +834,7 @@ window.openDeadModal = async function (id) {
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonText: 'ดำเนินการต่อ',
-                cancelButtonText: 'ยกเลิก',
-                confirmButtonColor: '#f59e0b'
+                cancelButtonText: 'ยกเลิก'
             });
             if (!result.isConfirmed) return;
         }
@@ -1068,14 +1068,12 @@ window.skipSpawn = async function (id) {
         icon: isEarly ? 'warning' : 'question',
         showCancelButton: true,
         confirmButtonText: 'ยืนยัน (ไม่เกิด)',
-        cancelButtonText: 'ยกเลิก',
-        confirmButtonColor: isEarly ? '#f59e0b' : '#2563eb'
+        cancelButtonText: 'ยกเลิก'
     };
 
     if (showNoTimeBtn) {
         swalOptions.showDenyButton = true;
         swalOptions.denyButtonText = '🚫 ไม่ระบุเวลา (--:--)';
-        swalOptions.denyButtonColor = '#64748b';
     }
 
     const result = await swalDark.fire(swalOptions);
@@ -1129,7 +1127,7 @@ window.deleteBoss = async function () {
         showCancelButton: true,
         confirmButtonText: 'ลบข้อมูล',
         cancelButtonText: 'ยกเลิก',
-        customClass: { confirmButton: 'btn action-dead', cancelButton: 'btn secondary' }
+        customClass: { confirmButton: 'btn action-dead', cancelButton: 'btn btn-cancel' }
     });
     if (!result.isConfirmed) return;
 

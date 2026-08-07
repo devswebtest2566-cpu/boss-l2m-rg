@@ -494,7 +494,42 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 1rem; }
     width: 100% !important;
 }
 
-/* Styled No Time Button (Glowing Purple Pill) */
+/* Styled Buttons & SweetAlert2 Styling */
+.swal2-actions {
+    gap: 12px !important;
+}
+.swal2-actions .btn {
+    margin: 0 !important;
+}
+
+/* 1. Cancel Button (ยกเลิก) - Left, Grey Light Pill */
+.btn-cancel,
+.btn.btn-cancel,
+.swal2-container .swal2-actions button.swal2-cancel,
+.swal2-container .swal2-actions button.swal2-cancel.swal2-styled {
+    background: #cbd5e1 !important;
+    color: #334155 !important;
+    border: none !important;
+    outline: none !important;
+    border-radius: 20px !important;
+    padding: 8px 18px !important;
+    font-size: 0.85rem !important;
+    font-weight: 700 !important;
+    box-shadow: none !important;
+    transition: all 0.25s ease !important;
+    cursor: pointer !important;
+}
+
+.btn-cancel:hover,
+.btn.btn-cancel:hover,
+.swal2-container .swal2-actions button.swal2-cancel:hover,
+.swal2-container .swal2-actions button.swal2-cancel.swal2-styled:hover {
+    background: #94a3b8 !important;
+    color: #0f172a !important;
+    transform: translateY(-1px) !important;
+}
+
+/* 2. Deny Button (🚫 ไม่ระบุเวลา (--:--)) - Middle, Glowing Purple Pill */
 .btn-no-time,
 .swal2-container .swal2-actions button.swal2-deny,
 .swal2-container .swal2-actions button.swal2-deny.swal2-styled {
@@ -504,7 +539,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 1rem; }
     outline: none !important;
     border-radius: 20px !important;
     padding: 8px 18px !important;
-    font-size: 0.9rem !important;
+    font-size: 0.85rem !important;
     font-weight: 700 !important;
     box-shadow: 0 0 15px rgba(139, 92, 246, 0.5) !important;
     transition: all 0.25s ease !important;
@@ -517,4 +552,40 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 1rem; }
     background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%) !important;
     box-shadow: 0 0 22px rgba(168, 85, 247, 0.8) !important;
     transform: translateY(-2px) !important;
+}
+
+/* 3. Confirm Button (ยืนยัน...) - Right, Glowing Yellow Pill */
+.swal2-container .swal2-actions button.swal2-confirm.swal2-styled,
+.swal2-container .swal2-actions button.swal2-confirm {
+    background: linear-gradient(135deg, #facc15, #eab308) !important;
+    color: #000000 !important;
+    border: none !important;
+    outline: none !important;
+    border-radius: 20px !important;
+    padding: 8px 18px !important;
+    font-size: 0.85rem !important;
+    font-weight: 700 !important;
+    box-shadow: 0 4px 15px rgba(234, 179, 8, 0.3) !important;
+    transition: all 0.25s ease !important;
+    cursor: pointer !important;
+}
+
+.swal2-container .swal2-actions button.swal2-confirm:hover,
+.swal2-container .swal2-actions button.swal2-confirm.swal2-styled:hover {
+    background: linear-gradient(135deg, #fde047, #facc15) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 20px rgba(234, 179, 8, 0.5) !important;
+}
+
+/* Delete Boss action override */
+.swal2-container .swal2-actions button.swal2-confirm.action-dead {
+    background: rgba(244, 63, 94, 0.15) !important;
+    color: #f43f5e !important;
+    border: 1px solid rgba(244, 63, 94, 0.4) !important;
+    box-shadow: 0 0 15px rgba(244, 63, 94, 0.2) !important;
+}
+.swal2-container .swal2-actions button.swal2-confirm.action-dead:hover {
+    background: #f43f5e !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 15px rgba(244, 63, 94, 0.6) !important;
 }

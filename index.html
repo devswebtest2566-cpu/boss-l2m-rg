@@ -158,8 +158,8 @@
 
                 <div class="modal-actions">
                     <button type="button" id="btn-delete-boss" class="btn" style="background:#ef4444;color:#fff;display:none;margin-right:auto;" onclick="deleteBoss()">ลบบอส</button>
-                    <button type="button" class="btn" style="background:#475569;color:#f8fafc;" onclick="closeModal('boss-modal')">ยกเลิก</button>
-                    <button type="submit" class="btn primary">บันทึกข้อมูล</button>
+                    <button type="button" class="btn btn-cancel" onclick="closeModal('boss-modal')">ยกเลิก</button>
+                    <button type="submit" class="btn secondary">บันทึกข้อมูล</button>
                 </div>
             </form>
         </div>
@@ -182,7 +182,7 @@
                     <div id="dead-spawn-preview" style="color: var(--accent-cyan); font-size: 0.85rem; margin-top: 8px; text-align: center; min-height: 1.2rem;"></div>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn" style="background:#cbd5e1;color:#334155;" onclick="closeModal('dead-modal')">ยกเลิก</button>
+                    <button type="button" class="btn btn-cancel" onclick="closeModal('dead-modal')">ยกเลิก</button>
                     <button type="button" id="btn-no-time-dead" class="btn btn-no-time" style="display:none;" onclick="handleNoTimeDeath()">🚫 ไม่ระบุเวลา (--:--)</button>
                     <button type="submit" class="btn secondary">ยืนยันบอสตาย</button>
                 </div>
@@ -217,8 +217,8 @@
                 </div>
 
                 <div class="modal-actions">
-                    <button type="button" class="btn" style="background:#cbd5e1;color:#334155;" onclick="closeModal('reset-server-modal')">ยกเลิก</button>
-                    <button type="submit" class="btn" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; font-weight: bold;">ยืนยันการรีเซ็ต</button>
+                    <button type="button" class="btn btn-cancel" onclick="closeModal('reset-server-modal')">ยกเลิก</button>
+                    <button type="submit" class="btn secondary">ยืนยันการรีเซ็ต</button>
                 </div>
             </form>
         </div>
