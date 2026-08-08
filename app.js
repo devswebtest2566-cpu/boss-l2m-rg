@@ -35,11 +35,11 @@ function checkAutoInvasionSchedule() {
 
     const isTargetDay = (day === 1 || day === 3 || day === 5);
     const isTargetTime = (hour >= 8);
-    
+
     return isTargetDay && isTargetTime;
 }
 
-window.toggleInvasionMode = function() {
+window.toggleInvasionMode = function () {
     isInvasionMode = !isInvasionMode;
     const body = document.body;
     const homeContainer = document.getElementById('home-table-container');
@@ -107,7 +107,7 @@ function setupTimeAutoFormat(inputId) {
         }
     });
 
-    input.addEventListener('keydown', function(e) {
+    input.addEventListener('keydown', function (e) {
         if (e.key === 'Backspace' && e.target.value.endsWith(':')) {
             e.preventDefault();
             e.target.value = e.target.value.slice(0, -2);
@@ -154,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
             altInput: true,
             altFormat: "d/m/Y",
             disableMobile: "true",
-            onChange: function() {
+            onChange: function () {
                 updateSpawnPreview();
             }
         });
@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const resetPlayableEl = document.getElementById('reset-playable-time');
     const resetActualEl = document.getElementById('reset-actual-time');
-    
+
     if (resetPlayableEl) {
         resetPlayableFP = flatpickr(resetPlayableEl, {
             enableTime: true,
@@ -220,10 +220,10 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- Authentication ---
 async function checkAuth() {
     if (!supabaseClient) return;
-    
+
     try {
         const { data: { session }, error } = await supabaseClient.auth.getSession();
-        
+
         if (error) {
             console.error("Auth session error:", error);
             promptForPin();
@@ -233,7 +233,7 @@ async function checkAuth() {
         if (session) {
             currentUserRole = (session.user.email === 'clan@revengers.com') ? 'admin' : 'viewer';
             applyRoleUI();
-            
+
             if (currentUserRole === 'admin') {
                 let savedName = localStorage.getItem('editor_name');
                 if (!savedName) {
@@ -276,21 +276,21 @@ function promptForPin() {
                     email: 'clan@revengers.com',
                     password: pin
                 });
-                
+
                 if (error) {
                     // Try Viewer role if Admin fails
                     const viewerAttempt = await supabaseClient.auth.signInWithPassword({
                         email: 'viewer@revengers.com',
                         password: pin
                     });
-                    
+
                     if (viewerAttempt.error) {
                         Swal.showValidationMessage(`รหัสไม่ถูกต้อง (Admin: ${error.message}, Viewer: ${viewerAttempt.error.message})`);
                         return false;
                     }
                     data = viewerAttempt.data;
                 }
-                
+
                 return data;
             } catch (error) {
                 Swal.showValidationMessage(`เกิดข้อผิดพลาด: ${error}`);
@@ -302,7 +302,7 @@ function promptForPin() {
             const userEmail = result.value.user?.email;
             currentUserRole = (userEmail === 'clan@revengers.com') ? 'admin' : 'viewer';
             applyRoleUI();
-            
+
             swalDark.fire({
                 icon: 'success',
                 title: 'เข้าสู่ระบบสำเร็จ!',
@@ -325,7 +325,7 @@ function promptForName() {
         showDashboard();
         return;
     }
-    
+
     swalDark.fire({
         title: '👤 ใส่ชื่อในเกมของคุณ',
         text: 'ชื่อนี้จะถูกใช้เพื่อบันทึกประวัติว่าใครเป็นคนแก้บอส',
@@ -367,14 +367,14 @@ let realtimeInitialized = false;
 function initRealtime() {
     if (realtimeInitialized || !supabaseClient) return;
     realtimeInitialized = true;
-    
+
     supabaseClient
         .channel('public:bosses')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'bosses' }, payload => {
             fetchBosses();
         })
         .subscribe();
-        
+
     supabaseClient
         .channel('public:schedule_events')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_events' }, payload => {
@@ -388,7 +388,7 @@ function initRealtime() {
 async function logUserAccess() {
     if (!supabaseClient) return;
     if (sessionStorage.getItem('access_logged') === 'true') return;
-    
+
     let ip = 'Unknown';
     try {
         const res = await fetch('https://api.ipify.org?format=json');
@@ -399,7 +399,7 @@ async function logUserAccess() {
     } catch (e) {
         console.warn('Could not fetch IP, might be blocked by adblocker:', e);
     }
-    
+
     try {
         let editorName = localStorage.getItem('editor_name');
         if (!editorName || currentUserRole !== 'admin') {
@@ -411,7 +411,7 @@ async function logUserAccess() {
             role: currentUserRole || 'unknown',
             ip_address: ip
         }]);
-        
+
         if (error) {
             console.error('Error inserting access log:', error);
         } else {
@@ -442,14 +442,14 @@ function applyRoleUI() {
     const resetBtn = document.getElementById('reset-boss-btn');
     const addScheduleBtn = document.getElementById('add-schedule-btn');
     const accessLogBtn = document.getElementById('access-log-btn');
-    
+
     if (currentUserRole === 'viewer') {
         if (addBtn) addBtn.style.display = 'none';
         if (logBtn) logBtn.style.display = 'none';
         if (resetBtn) resetBtn.style.display = 'none';
         if (addScheduleBtn) addScheduleBtn.style.display = 'none';
         if (accessLogBtn) accessLogBtn.style.display = 'none';
-        
+
         let styleEl = document.getElementById('viewer-style');
         if (!styleEl) {
             styleEl = document.createElement('style');
@@ -462,13 +462,13 @@ function applyRoleUI() {
         if (logBtn) logBtn.style.display = 'inline-block';
         if (resetBtn) resetBtn.style.display = 'inline-block';
         if (accessLogBtn) accessLogBtn.style.display = 'inline-flex';
-        
+
         let styleEl = document.getElementById('viewer-style');
         if (styleEl) styleEl.remove();
     }
 }
 
-window.logout = async function() {
+window.logout = async function () {
     if (!supabaseClient) return;
     await supabaseClient.auth.signOut();
     localStorage.removeItem('editor_name');
@@ -508,7 +508,7 @@ function renderBosses() {
     // Search Filtering
     let filteredBosses = bosses.filter(b => b.is_active);
     if (searchQuery) {
-        filteredBosses = filteredBosses.filter(b => 
+        filteredBosses = filteredBosses.filter(b =>
             (b.name && b.name.toLowerCase().includes(searchQuery))
         );
     }
@@ -539,7 +539,7 @@ function renderBosses() {
         invBosses.forEach(boss => {
             invBossTableBody.appendChild(createBossRow(boss, invRowIndex++));
         });
-        
+
         if (invBosses.length === 0) {
             const emptyRow = document.createElement('tr');
             emptyRow.innerHTML = `<td colspan="8" style="text-align:center;padding:2rem;color:#94a3b8;">ไม่พบข้อมูลบอสศัตรู</td>`;
@@ -555,14 +555,14 @@ function createBossRow(boss, index) {
     tr.dataset.id = boss.id;
 
     const nextSpawnTime = boss.next_spawn_time ? new Date(boss.next_spawn_time).getTime() : 0;
-    
+
     // Check if spawning in current hour
     const now = getNow();
     const startOfHour = new Date(now);
     startOfHour.setMinutes(0, 0, 0);
     const startOfNextHour = new Date(startOfHour);
     startOfNextHour.setHours(startOfNextHour.getHours() + 1);
-    
+
     const isInHour = nextSpawnTime >= startOfHour.getTime() && nextSpawnTime < startOfNextHour.getTime();
     tr.className = `boss-row${isInHour ? ' in-hour-highlight' : ''}`;
 
@@ -619,7 +619,7 @@ function createBossRow(boss, index) {
     return tr;
 }
 
-window.toggleSoundNotification = function() {
+window.toggleSoundNotification = function () {
     isSoundEnabled = !isSoundEnabled;
     localStorage.setItem('isSoundEnabled', isSoundEnabled);
     updateSoundBtnUI();
@@ -650,9 +650,9 @@ function playBossSpawnSound() {
         if (ctx.state === 'suspended') {
             ctx.resume();
         }
-        
+
         const now = ctx.currentTime;
-        
+
         // Chime Note 1 (E5)
         const osc1 = ctx.createOscillator();
         const gain1 = ctx.createGain();
@@ -695,7 +695,7 @@ function playBossSpawnSound() {
 
 function updateCountdowns() {
     const now = getNow();
-    
+
     const currentPeriodState = checkAutoInvasionSchedule();
     if (currentPeriodState !== lastAutoPeriodState) {
         lastAutoPeriodState = currentPeriodState;
@@ -804,11 +804,11 @@ function formatHHmm(dateInput) {
     if (!dateInput) return '--:--';
     const thaiDate = getThaiDateFromUTC(dateInput);
     const nowThaiDate = getThaiDateFromUTC(getNow());
-    
+
     const hh = String(thaiDate.getUTCHours()).padStart(2, '0');
     const min = String(thaiDate.getUTCMinutes()).padStart(2, '0');
     const timeStr = `${hh}:${min}`;
-    
+
     if (thaiDate.getUTCFullYear() === nowThaiDate.getUTCFullYear() &&
         thaiDate.getUTCMonth() === nowThaiDate.getUTCMonth() &&
         thaiDate.getUTCDate() === nowThaiDate.getUTCDate()) {
@@ -823,15 +823,15 @@ function formatHHmm(dateInput) {
 function formatDate(dateInput) {
     if (!dateInput) return '-';
     const thaiDate = getThaiDateFromUTC(dateInput);
-    
+
     const dd = String(thaiDate.getUTCDate()).padStart(2, '0');
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const month = months[thaiDate.getUTCMonth()];
     const yr = String(thaiDate.getUTCFullYear()).slice(-2);
-    
+
     const hh = String(thaiDate.getUTCHours()).padStart(2, '0');
     const min = String(thaiDate.getUTCMinutes()).padStart(2, '0');
-    
+
     return `${dd}/${month}/${yr} ${hh}:${min}`;
 }
 
@@ -850,23 +850,23 @@ function updateSpawnPreview() {
     const timeVal = document.getElementById('dead-time').value;
     const previewEl = document.getElementById('dead-spawn-preview');
     if (!previewEl) return;
-    
+
     if (dateVal && timeVal && /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeVal)) {
         const [y, m, d] = dateVal.split('-').map(Number);
         const [inputHours, inputMins] = timeVal.split(':').map(Number);
-        
+
         const deathThaiMs = Date.UTC(y, m - 1, d, inputHours, inputMins, 0);
         const trueUTCDeathMs = deathThaiMs - (7 * 3600 * 1000);
         const nextSpawnMs = trueUTCDeathMs + (currentDeadBossCooldown * 60000);
-        
+
         const nextThaiMs = nextSpawnMs + (7 * 3600 * 1000);
         const nextThaiDate = new Date(nextThaiMs);
-        
+
         const nDD = String(nextThaiDate.getUTCDate()).padStart(2, '0');
         const nMM = String(nextThaiDate.getUTCMonth() + 1).padStart(2, '0');
         const nh = String(nextThaiDate.getUTCHours()).padStart(2, '0');
         const nm = String(nextThaiDate.getUTCMinutes()).padStart(2, '0');
-        
+
         previewEl.textContent = `⚡ เกิดรอบถัดไป: ${nDD}/${nMM} ${nh}:${nm}`;
 
         // Check if boss is Invasion & next spawn is past midnight of death date
@@ -889,7 +889,7 @@ function updateSpawnPreview() {
     }
 }
 
-window.handleNoTimeDeath = async function() {
+window.handleNoTimeDeath = async function () {
     if (!supabaseClient) return;
     const id = document.getElementById('dead-boss-id').value;
     const boss = bosses.find(b => b.id === id);
@@ -920,10 +920,10 @@ if (deadDateInput) deadDateInput.addEventListener('input', updateSpawnPreview);
 window.openDeadModal = async function (id) {
     const boss = bosses.find(b => b.id === id);
     if (!boss) return;
-    
+
     const nameParts = (boss.name || '').split('/');
     const nameThai = nameParts[0] ? nameParts[0].trim() : boss.name;
-    
+
     if (boss.next_spawn_time) {
         const nextTime = new Date(boss.next_spawn_time).getTime();
         if (nextTime > getNow()) {
@@ -943,7 +943,7 @@ window.openDeadModal = async function (id) {
 
     document.getElementById('dead-boss-id').value = id;
     document.getElementById('dead-boss-name').textContent = nameThai;
-    
+
     const lastSpawnEl = document.getElementById('dead-last-spawn');
     if (lastSpawnEl) {
         if (boss.next_spawn_time) {
@@ -974,14 +974,14 @@ window.openDeadModal = async function (id) {
     const dd = String(thaiDate.getUTCDate()).padStart(2, '0');
     const hh = String(thaiDate.getUTCHours()).padStart(2, '0');
     const min = String(thaiDate.getUTCMinutes()).padStart(2, '0');
-    
+
     if (deadDateFP) {
         deadDateFP.setDate(`${yyyy}-${mm}-${dd}`);
     } else {
         document.getElementById('dead-date').value = `${yyyy}-${mm}-${dd}`;
     }
     document.getElementById('dead-time').value = `${hh}:${min}`;
-    
+
     updateSpawnPreview();
 
     openModal('dead-modal');
@@ -1093,7 +1093,7 @@ async function handleConfirmDeath(e) {
 
     const [y, m, d] = dateStr.split('-').map(Number);
     const [inputHours, inputMins] = timeStr.split(':').map(Number);
-    
+
     const deathThaiMs = Date.UTC(y, m - 1, d, inputHours, inputMins, 0);
     const trueUTCDeathMs = deathThaiMs - (7 * 3600 * 1000);
     const trueDeathDate = new Date(trueUTCDeathMs);
@@ -1133,11 +1133,11 @@ window.skipSpawn = async function (id) {
 
     const nextTime = new Date(boss.next_spawn_time).getTime();
     const isEarly = nextTime > getNow();
-    
+
     const currentNext = new Date(boss.next_spawn_time);
     const minsToAdd = boss.regular_respawn_mins || 0;
     const nextSpawnDate = new Date(currentNext.getTime() + (minsToAdd * 60000));
-    
+
     // Format DD/MM HH:mm
     const thaiNextDate = getThaiDateFromUTC(nextSpawnDate);
     const nDD = String(thaiNextDate.getUTCDate()).padStart(2, '0');
@@ -1145,12 +1145,12 @@ window.skipSpawn = async function (id) {
     const nh = String(thaiNextDate.getUTCHours()).padStart(2, '0');
     const nm = String(thaiNextDate.getUTCMinutes()).padStart(2, '0');
     const displayFormatted = `${nDD}/${nMM} ${nh}:${nm}`;
-    
+
     let htmlContent = `ต้องการบวกเวลาเกิด (Skip) ของ <span style="color: #facc15;">${boss.name}</span> ไปรอบถัดไปใช่หรือไม่?<br><br>
     <div style="background: rgba(0, 242, 254, 0.1); border: 1px solid rgba(0, 242, 254, 0.3); color: #00f2fe; padding: 8px 14px; border-radius: 8px; display: inline-block; font-size: 0.95rem;">
         ⚡ เกิดรอบถัดไป: <strong>${displayFormatted}</strong>
     </div>`;
-    
+
     if (isEarly) {
         htmlContent = `<p style="color: #f59e0b; margin-bottom: 12px; font-weight: bold;">⚠️ บอสยังไม่ถึงเวลาเกิด!</p>` + htmlContent;
     }
@@ -1212,10 +1212,10 @@ window.skipSpawn = async function (id) {
 
 window.deleteBoss = async function () {
     if (!supabaseClient) return;
-    
+
     const id = document.getElementById('boss-id').value;
     if (!id) return;
-    
+
     const boss = bosses.find(b => b.id === id);
     if (!boss) return;
 
@@ -1240,38 +1240,38 @@ window.deleteBoss = async function () {
     }
 }
 
-window.openLogModal = async function() {
+window.openLogModal = async function () {
     openModal('log-modal');
     document.getElementById('log-table-body').innerHTML = '<tr><td colspan="4" style="text-align:center;">กำลังโหลดข้อมูล...</td></tr>';
-    
+
     if (!supabaseClient) return;
     const { data, error } = await supabaseClient
         .from('boss_logs')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(100);
-        
+
     if (error) {
         document.getElementById('log-table-body').innerHTML = `<tr><td colspan="4" style="text-align:center; color:#ef4444;">${error.message}</td></tr>`;
         return;
     }
-    
+
     if (!data || data.length === 0) {
         document.getElementById('log-table-body').innerHTML = '<tr><td colspan="4" style="text-align:center;">ไม่มีประวัติการแก้ไข</td></tr>';
         return;
     }
-    
+
     let html = '';
     data.forEach(log => {
         const d = new Date(log.created_at);
         const logThaiDate = new Date(d.getTime() + (7 * 3600 * 1000));
-        
+
         const day = String(logThaiDate.getUTCDate()).padStart(2, '0');
         const month = String(logThaiDate.getUTCMonth() + 1).padStart(2, '0');
         const hours = String(logThaiDate.getUTCHours()).padStart(2, '0');
         const mins = String(logThaiDate.getUTCMinutes()).padStart(2, '0');
         const formattedTime = `${day}/${month} ${hours}:${mins}`;
-        
+
         let actionLabel = log.action_type;
         let actionColor = '#fff';
         if (actionLabel === 'Dead') { actionLabel = 'ตาย'; actionColor = '#f43f5e'; }
@@ -1279,14 +1279,14 @@ window.openLogModal = async function() {
         if (actionLabel === 'Add') { actionLabel = 'เพิ่ม'; actionColor = '#22c55e'; }
         if (actionLabel === 'Edit') { actionLabel = 'แก้ไข'; actionColor = '#eab308'; }
         if (actionLabel === 'Delete') { actionLabel = 'ลบ'; actionColor = '#ef4444'; }
-        
+
         let serverBadge = '';
         if (log.server_context === 'invasion') {
             serverBadge = `<span style="font-size: 0.65rem; background: rgba(239, 68, 68, 0.15); color: #fca5a5; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(239, 68, 68, 0.3); margin-right: 6px; white-space: nowrap;">⚔️ ศัตรู</span>`;
         } else {
             serverBadge = `<span style="font-size: 0.65rem; background: rgba(0, 242, 254, 0.1); color: #00f2fe; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(0, 242, 254, 0.3); margin-right: 6px; white-space: nowrap;">🛡️ เรา</span>`;
         }
-        
+
         html += `
             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
                 <td style="padding: 8px; font-size: 0.8rem; color: #94a3b8;">${formattedTime}</td>
@@ -1303,7 +1303,7 @@ window.openLogModal = async function() {
     document.getElementById('log-table-body').innerHTML = html;
 }
 
-window.handleConfirmServerReset = async function(e) {
+window.handleConfirmServerReset = async function (e) {
     e.preventDefault();
     if (!supabaseClient) return;
 
@@ -1413,9 +1413,9 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-window.openAccessLogModal = async function() {
+window.openAccessLogModal = async function () {
     if (currentUserRole === 'viewer') return;
-    
+
     const { value: pin } = await swalDark.fire({
         title: '🔒 ยืนยันสิทธิ์',
         text: 'กรุณากรอกรหัสผ่านเพื่อดู IP Address',
@@ -1433,25 +1433,25 @@ window.openAccessLogModal = async function() {
     });
 
     if (!pin) return;
-    
+
     openModal('access-log-modal');
     const tbody = document.getElementById('access-log-table-body');
     if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">กำลังโหลดข้อมูล...</td></tr>';
-    
+
     if (!supabaseClient) return;
-    
+
     const { data, error } = await supabaseClient
         .from('user_access_logs')
         .select('*')
         .order('login_time', { ascending: false })
         .limit(100);
-        
+
     if (error) {
         console.error('Error fetching access logs:', error);
         if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #ef4444;">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
         return;
     }
-    
+
     if (tbody) {
         tbody.innerHTML = '';
         if (data && data.length > 0) {
@@ -1468,30 +1468,31 @@ window.openAccessLogModal = async function() {
                     };
                 }
                 const logTime = new Date(log.login_time);
-                const formatTime = `${logTime.toLocaleDateString('th-TH')} ${logTime.toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}`;
+                const formatTime = `${logTime.toLocaleDateString('th-TH')} ${logTime.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}`;
                 groupedLogs[key].times.push(formatTime);
             });
 
             Object.values(groupedLogs).forEach(group => {
                 const tr = document.createElement('tr');
-                
+                tr.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+
                 let roleHtml = '';
                 if (group.role === 'admin') {
                     roleHtml = '<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4);">Admin</span>';
                 } else {
                     roleHtml = '<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4);">Viewer</span>';
                 }
-                
+
                 let timesDisplay = group.times.slice(0, 3).join('<br>');
                 if (group.times.length > 3) {
                     timesDisplay += `<br><span style="color: #64748b; font-size: 0.75rem;">และอีก ${group.times.length - 3} ครั้ง...</span>`;
                 }
-                
+
                 tr.innerHTML = `
-                    <td style="font-family: monospace; font-size: 0.85rem; line-height: 1.4;">${timesDisplay}</td>
-                    <td style="color: #facc15;">${group.username}</td>
-                    <td>${roleHtml}</td>
-                    <td style="font-family: monospace; color: #94a3b8;">${group.ip}</td>
+                    <td style="padding: 12px 10px; vertical-align: top; font-family: monospace; font-size: 0.85rem; line-height: 1.5;">${timesDisplay}</td>
+                    <td style="padding: 12px 10px; vertical-align: top; color: #facc15; font-weight: 500;">${group.username}</td>
+                    <td style="padding: 12px 10px; vertical-align: top;">${roleHtml}</td>
+                    <td style="padding: 12px 10px; vertical-align: top; font-family: monospace; color: #94a3b8;">${group.ip}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -1503,7 +1504,7 @@ window.openAccessLogModal = async function() {
 
 // --- Schedule Logic ---
 let isScheduleView = false;
-window.toggleScheduleView = function() {
+window.toggleScheduleView = function () {
     isScheduleView = !isScheduleView;
     const mainContent = document.getElementById('main-content');
     const scheduleContent = document.getElementById('schedule-main-content');
@@ -1518,12 +1519,12 @@ window.toggleScheduleView = function() {
         toggleBtn.style.background = 'linear-gradient(135deg, #0ea5e9, #2563eb)';
         if (invasionBtn) invasionBtn.style.display = 'none';
         if (searchBox) searchBox.style.display = 'none';
-        
+
         const addBossBtn = document.getElementById('add-boss-btn');
         const resetBossBtn = document.getElementById('reset-boss-btn');
         if (addBossBtn) addBossBtn.style.display = 'none';
         if (resetBossBtn) resetBossBtn.style.display = 'none';
-        
+
         renderSchedule();
     } else {
         mainContent.style.display = 'block';
@@ -1532,25 +1533,25 @@ window.toggleScheduleView = function() {
         toggleBtn.style.background = 'linear-gradient(135deg, #8b5cf6, #6d28d9)';
         if (invasionBtn) invasionBtn.style.display = 'inline-flex';
         if (searchBox) searchBox.style.display = 'flex';
-        
+
         applyRoleUI();
     }
 }
 
 let scheduleEvents = [];
 
-window.fetchScheduleEvents = async function() {
+window.fetchScheduleEvents = async function () {
     if (!supabaseClient) return;
     const { data, error } = await supabaseClient
         .from('schedule_events')
         .select('*')
         .order('time', { ascending: true });
-        
+
     if (error) {
         console.error('Error fetching schedule events:', error);
         return;
     }
-    
+
     // Map DB column names to JS object names
     scheduleEvents = (data || []).map(row => ({
         id: row.id,
@@ -1559,15 +1560,15 @@ window.fetchScheduleEvents = async function() {
         title: row.title,
         isVisible: row.is_visible
     }));
-    
+
     renderSchedule();
 }
 
-window.renderSchedule = function() {
+window.renderSchedule = function () {
     const grid = document.getElementById('schedule-grid');
     if (!grid) return;
     grid.innerHTML = '';
-    
+
     const days = [
         { id: '1', name: 'จันทร์' },
         { id: '2', name: 'อังคาร' },
@@ -1582,21 +1583,21 @@ window.renderSchedule = function() {
         const col = document.createElement('div');
         col.className = 'schedule-day-column';
         col.innerHTML = `<div class="schedule-day-header">${day.name}</div>`;
-        
+
         const eventsContainer = document.createElement('div');
         eventsContainer.className = 'schedule-events-container';
-        
+
         const dayEvents = scheduleEvents.filter(e => e.day === day.id);
         // Ensure sorted by time
         dayEvents.sort((a, b) => a.time.localeCompare(b.time));
-        
+
         dayEvents.forEach(ev => {
             const card = document.createElement('div');
             card.className = 'schedule-event-card' + (ev.isVisible ? '' : ' hidden-event');
             card.onclick = () => openScheduleModal(ev.id);
-            
+
             const visibilityIcon = ev.isVisible ? '' : '<span class="event-visibility-icon" title="ซ่อนอยู่">👁️‍🗨️</span>';
-            
+
             card.innerHTML = `
                 ${visibilityIcon}
                 <div class="event-time">${ev.time}</div>
@@ -1604,22 +1605,22 @@ window.renderSchedule = function() {
             `;
             eventsContainer.appendChild(card);
         });
-        
+
         col.appendChild(eventsContainer);
         grid.appendChild(col);
     });
 }
 
-window.openScheduleModal = function(id = null) {
+window.openScheduleModal = function (id = null) {
     if (currentUserRole === 'viewer') return; // Prevent viewers from opening the modal
 
     const form = document.getElementById('schedule-form');
     if (!form) return;
     form.reset();
-    
+
     const delBtn = document.getElementById('btn-delete-schedule');
     const modalTitle = document.getElementById('schedule-modal-title');
-    
+
     if (id) {
         const ev = scheduleEvents.find(e => e.id === id);
         if (ev) {
@@ -1636,7 +1637,7 @@ window.openScheduleModal = function(id = null) {
         if (delBtn) delBtn.style.display = 'none';
         if (modalTitle) modalTitle.textContent = 'เพิ่มกิจกรรม';
     }
-    
+
     openModal('schedule-modal');
 }
 
@@ -1649,20 +1650,20 @@ document.addEventListener('DOMContentLoaded', () => {
         sForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (currentUserRole === 'viewer') return;
-            
+
             const id = document.getElementById('schedule-id').value;
             const day = document.getElementById('schedule-day').value;
             const time = document.getElementById('schedule-time').value;
             const title = document.getElementById('schedule-title').value;
             const isVisible = document.getElementById('schedule-is-visible').checked;
-            
+
             const payload = {
                 day: day,
                 time: time,
                 title: title,
                 is_visible: isVisible
             };
-            
+
             if (id) {
                 // Update existing event
                 const { error } = await supabaseClient.from('schedule_events').update(payload).eq('id', id);
@@ -1678,18 +1679,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     swalDark.fire('เกิดข้อผิดพลาด', 'ไม่สามารถเพิ่มข้อมูลได้', 'error');
                 }
             }
-            
+
             closeModal('schedule-modal');
             fetchScheduleEvents();
         });
     }
 });
 
-window.deleteScheduleEvent = async function() {
+window.deleteScheduleEvent = async function () {
     if (currentUserRole === 'viewer') return;
     const id = document.getElementById('schedule-id').value;
     if (!id) return;
-    
+
     const result = await swalDark.fire({
         title: 'ยืนยันการลบกิจกรรม',
         text: 'ต้องการลบกิจกรรมนี้ออกจากตารางหรือไม่?',
@@ -1699,7 +1700,7 @@ window.deleteScheduleEvent = async function() {
         cancelButtonText: 'ยกเลิก',
         customClass: { confirmButton: 'btn action-dead', cancelButton: 'btn btn-cancel' }
     });
-    
+
     if (result.isConfirmed) {
         const { error } = await supabaseClient.from('schedule_events').delete().eq('id', id);
         if (error) {

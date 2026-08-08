@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Revengers time boss</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="styles.css?v=3">
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -15,6 +17,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 </head>
+
 <body>
 
     <!-- Main Dashboard -->
@@ -23,14 +26,33 @@
             <div class="header-content">
                 <h1>Revengers time boss</h1>
                 <div class="header-actions">
-                    <span id="live-thai-clock" class="badge" style="background: rgba(0, 242, 254, 0.1); border: 1px solid rgba(0, 242, 254, 0.3); color: #00f2fe; letter-spacing: 1px; font-family: monospace; font-size: 0.85rem;">🕒 --:--:--</span>
-                    <button id="sound-toggle-btn" class="btn secondary" onclick="toggleSoundNotification()" title="เปิด/ปิด เสียงเตือนเมื่อบอสเกิด" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4);">🔔 เสียง: เปิด</button>
-                    <button id="log-btn" class="btn secondary" onclick="openLogModal()" title="ประวัติการแก้ไข">📜 ประวัติ</button>
-                    <button id="access-log-btn" class="btn logout-icon-btn" onclick="openAccessLogModal()" title="ประวัติการเข้าใช้งาน" style="margin-right: 0.5rem; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); color: #3b82f6;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+                    <span id="live-thai-clock" class="badge"
+                        style="background: rgba(0, 242, 254, 0.1); border: 1px solid rgba(0, 242, 254, 0.3); color: #00f2fe; letter-spacing: 1px; font-family: monospace; font-size: 0.85rem;">🕒
+                        --:--:--</span>
+                    <button id="sound-toggle-btn" class="btn secondary" onclick="toggleSoundNotification()"
+                        title="เปิด/ปิด เสียงเตือนเมื่อบอสเกิด"
+                        style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4);">🔔
+                        เสียง: เปิด</button>
+                    <button id="log-btn" class="btn secondary" onclick="openLogModal()" title="ประวัติการแก้ไข">📜
+                        ประวัติ</button>
+                    <button id="access-log-btn" class="btn logout-icon-btn" onclick="openAccessLogModal()"
+                        title="ประวัติการเข้าใช้งาน"
+                        style="margin-right: 0.5rem; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); color: #3b82f6;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+                            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+                            <line x1="6" y1="6" x2="6.01" y2="6"></line>
+                            <line x1="6" y1="18" x2="6.01" y2="18"></line>
+                        </svg>
                     </button>
                     <button id="logout-btn" class="btn logout-icon-btn" onclick="logout()" title="ออกจากระบบ">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
                     </button>
                 </div>
             </div>
@@ -40,12 +62,21 @@
         <div class="search-container">
             <div class="search-box">
                 <span class="search-icon">🔍</span>
-                <input type="text" id="search-input" placeholder="ค้นหาชื่อ Boss..." autocomplete="off" spellcheck="false">
+                <input type="text" id="search-input" placeholder="ค้นหาชื่อ Boss..." autocomplete="off"
+                    spellcheck="false">
             </div>
             <div style="display: flex; gap: 10px;">
-                <button id="toggle-schedule-btn" class="btn secondary" onclick="toggleScheduleView()" title="เปิดตารางกิจกรรม" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white;">📅 ตารางกิจกรรม</button>
-                <button id="invasion-btn" class="btn outline-btn" onclick="toggleInvasionMode()" title="สลับโหมด Server Invasion" style="border: 1px solid #ef4444; color: #ef4444; background: transparent;">⚔️ Server Invasion</button>
-                <button id="reset-boss-btn" class="btn" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; display: none;">🔄 รีเซตหลังเปิดเซิฟ</button>
+                <button id="toggle-schedule-btn" class="btn secondary" onclick="toggleScheduleView()"
+                    title="เปิดตารางกิจกรรม"
+                    style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white;">📅
+                    ตารางกิจกรรม</button>
+                <button id="invasion-btn" class="btn outline-btn" onclick="toggleInvasionMode()"
+                    title="สลับโหมด Server Invasion"
+                    style="border: 1px solid #ef4444; color: #ef4444; background: transparent;">⚔️ Server
+                    Invasion</button>
+                <button id="reset-boss-btn" class="btn"
+                    style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; display: none;">🔄
+                    รีเซตหลังเปิดเซิฟ</button>
                 <button id="add-boss-btn" class="btn secondary">+ เพิ่มบอส</button>
             </div>
         </div>
@@ -54,7 +85,9 @@
         <main id="main-content">
             <div class="split-view-container" id="split-view-container">
                 <div class="boss-table-container" id="home-table-container">
-                    <h2 class="table-title" id="home-title" style="display: none; color: #fff; text-align: center; font-size: 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding: 1.25rem 1rem; margin: 0; background: rgba(0,0,0,0.2);">🛡️ เซิร์ฟเวอร์เรา (Home)</h2>
+                    <h2 class="table-title" id="home-title"
+                        style="display: none; color: #fff; text-align: center; font-size: 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding: 1.25rem 1rem; margin: 0; background: rgba(0,0,0,0.2);">
+                        🛡️ เซิร์ฟเวอร์เรา (Home)</h2>
                     <table class="boss-table">
                         <thead>
                             <tr>
@@ -72,7 +105,9 @@
                 </div>
 
                 <div class="boss-table-container" id="inv-table-container" style="display: none;">
-                    <h2 class="table-title" style="color: #ef4444; text-align: center; font-size: 1.1rem; border-bottom: 1px solid rgba(239,68,68,0.2); padding: 1.25rem 1rem; margin: 0; background: rgba(0,0,0,0.2);">⚔️ เซิร์ฟศัตรู (Invasion)</h2>
+                    <h2 class="table-title"
+                        style="color: #ef4444; text-align: center; font-size: 1.1rem; border-bottom: 1px solid rgba(239,68,68,0.2); padding: 1.25rem 1rem; margin: 0; background: rgba(0,0,0,0.2);">
+                        ⚔️ เซิร์ฟศัตรู (Invasion)</h2>
                     <table class="boss-table invasion-table">
                         <thead>
                             <tr>
@@ -94,9 +129,13 @@
         <!-- Schedule Table -->
         <main id="schedule-main-content" style="display: none; max-width: 1600px; margin: 0 auto; padding: 0 1rem;">
             <div class="schedule-table-container">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-                    <h2 class="table-title" style="color: #facc15; font-size: 1.5rem; text-shadow: 0 0 10px rgba(250, 204, 21, 0.5); margin: 0;">📅 ตารางกิจกรรมรายสัปดาห์</h2>
-                    <button id="add-schedule-btn" class="btn secondary" onclick="openScheduleModal()">+ เพิ่มกิจกรรม</button>
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                    <h2 class="table-title"
+                        style="color: #facc15; font-size: 1.5rem; text-shadow: 0 0 10px rgba(250, 204, 21, 0.5); margin: 0;">
+                        📅 ตารางกิจกรรมรายสัปดาห์</h2>
+                    <button id="add-schedule-btn" class="btn secondary" onclick="openScheduleModal()">+
+                        เพิ่มกิจกรรม</button>
                 </div>
                 <div class="schedule-grid" id="schedule-grid">
                     <!-- Days will be generated by JS -->
@@ -111,27 +150,35 @@
             <h2 id="modal-title">เพิ่ม / แก้ไขข้อมูลบอส</h2>
             <form id="boss-form">
                 <input type="hidden" id="boss-id">
-                
+
                 <div class="form-group" style="margin-bottom: 1.5rem;">
                     <label>เซิร์ฟเวอร์ (Server)</label>
-                    <div style="display: flex; gap: 1rem; background: rgba(0,0,0,0.3); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
-                        <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0; cursor: pointer; color: #fff;">
-                            <input type="radio" name="server_type" value="home" id="boss-server-home" checked> เซิร์ฟเวอร์เรา (Home)
+                    <div
+                        style="display: flex; gap: 1rem; background: rgba(0,0,0,0.3); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                        <label
+                            style="display: flex; align-items: center; gap: 0.5rem; margin: 0; cursor: pointer; color: #fff;">
+                            <input type="radio" name="server_type" value="home" id="boss-server-home" checked>
+                            เซิร์ฟเวอร์เรา (Home)
                         </label>
-                        <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0; cursor: pointer; color: #fca5a5;">
-                            <input type="radio" name="server_type" value="invasion" id="boss-server-inv"> เซิร์ฟศัตรู (Invasion)
+                        <label
+                            style="display: flex; align-items: center; gap: 0.5rem; margin: 0; cursor: pointer; color: #fca5a5;">
+                            <input type="radio" name="server_type" value="invasion" id="boss-server-inv"> เซิร์ฟศัตรู
+                            (Invasion)
                         </label>
-                        <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0; cursor: pointer; color: #d8b4fe;" id="label-boss-server-both">
-                            <input type="radio" name="server_type" value="both" id="boss-server-both"> ทั้งสองเซิร์ฟเวอร์
+                        <label
+                            style="display: flex; align-items: center; gap: 0.5rem; margin: 0; cursor: pointer; color: #d8b4fe;"
+                            id="label-boss-server-both">
+                            <input type="radio" name="server_type" value="both" id="boss-server-both">
+                            ทั้งสองเซิร์ฟเวอร์
                         </label>
                     </div>
                 </div>
-                
+
                 <div class="form-group">
                     <label>ชื่อบอส (Name)</label>
                     <input type="text" id="boss-name" placeholder="เช่น Queen Ant / คลีนแอนท์" required>
                 </div>
-                
+
                 <div class="form-row">
                     <div class="form-group">
                         <label>เกิดครั้งแรก (ชั่วโมง)</label>
@@ -158,7 +205,7 @@
                     <label>% โอกาสเกิด (Spawn Rate)</label>
                     <input type="number" id="boss-spawn-rate" placeholder="100" min="0" max="100" value="100">
                 </div>
-                
+
                 <div class="form-group toggle-group">
                     <label>
                         <input type="checkbox" id="boss-use-first">
@@ -174,7 +221,9 @@
                 </div>
 
                 <div class="modal-actions">
-                    <button type="button" id="btn-delete-boss" class="btn" style="background:#ef4444;color:#fff;display:none;margin-right:auto;" onclick="deleteBoss()">ลบบอส</button>
+                    <button type="button" id="btn-delete-boss" class="btn"
+                        style="background:#ef4444;color:#fff;display:none;margin-right:auto;"
+                        onclick="deleteBoss()">ลบบอส</button>
                     <button type="button" class="btn btn-cancel" onclick="closeModal('boss-modal')">ยกเลิก</button>
                     <button type="submit" class="btn secondary">บันทึกข้อมูล</button>
                 </div>
@@ -190,17 +239,24 @@
             <form id="dead-form">
                 <input type="hidden" id="dead-boss-id">
                 <div class="form-group">
-                    <div id="dead-last-spawn" style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.75rem; text-align: center;"></div>
+                    <div id="dead-last-spawn"
+                        style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.75rem; text-align: center;"></div>
                     <label>วันที่และเวลาที่บอสตาย (แบบ 24 ชม.)</label>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <input type="date" id="dead-date" required style="flex: 1; min-width: 120px; padding: 1rem; font-size: 1.1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.5); color: #fff; color-scheme: dark; text-align: center; letter-spacing: 1px;">
-                        <input type="text" id="dead-time" placeholder="HH:mm" pattern="^([01]?[0-9]|2[0-3]):[0-5][0-9]$" required style="flex: 1; min-width: 100px; padding: 1rem; font-size: 1.1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.5); color: #fff; text-align: center; letter-spacing: 2px;">
+                        <input type="date" id="dead-date" required
+                            style="flex: 1; min-width: 120px; padding: 1rem; font-size: 1.1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.5); color: #fff; color-scheme: dark; text-align: center; letter-spacing: 1px;">
+                        <input type="text" id="dead-time" placeholder="HH:mm" pattern="^([01]?[0-9]|2[0-3]):[0-5][0-9]$"
+                            required
+                            style="flex: 1; min-width: 100px; padding: 1rem; font-size: 1.1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.5); color: #fff; text-align: center; letter-spacing: 2px;">
                     </div>
-                    <div id="dead-spawn-preview" style="color: var(--accent-cyan); font-size: 0.85rem; margin-top: 8px; text-align: center; min-height: 1.2rem;"></div>
+                    <div id="dead-spawn-preview"
+                        style="color: var(--accent-cyan); font-size: 0.85rem; margin-top: 8px; text-align: center; min-height: 1.2rem;">
+                    </div>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-cancel" onclick="closeModal('dead-modal')">ยกเลิก</button>
-                    <button type="button" id="btn-no-time-dead" class="btn btn-no-time" style="display:none;" onclick="handleNoTimeDeath()">🚫 ไม่ระบุเวลา (--:--)</button>
+                    <button type="button" id="btn-no-time-dead" class="btn btn-no-time" style="display:none;"
+                        onclick="handleNoTimeDeath()">🚫 ไม่ระบุเวลา (--:--)</button>
                     <button type="submit" class="btn secondary">ยืนยันบอสตาย</button>
                 </div>
             </form>
@@ -213,10 +269,11 @@
             <h2 id="schedule-modal-title">เพิ่ม / แก้ไขกิจกรรม</h2>
             <form id="schedule-form">
                 <input type="hidden" id="schedule-id">
-                
+
                 <div class="form-group">
                     <label>วัน (Day)</label>
-                    <select id="schedule-day" required style="padding: 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 0.9rem; font-family: var(--font-family);">
+                    <select id="schedule-day" required
+                        style="padding: 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 0.9rem; font-family: var(--font-family);">
                         <option value="1">จันทร์</option>
                         <option value="2">อังคาร</option>
                         <option value="3">พุธ</option>
@@ -229,14 +286,16 @@
 
                 <div class="form-group">
                     <label>เวลา (Time แบบ 24 ชม.)</label>
-                    <input type="text" id="schedule-time" placeholder="HH:mm" pattern="^([01]?[0-9]|2[0-3]):[0-5][0-9]$" required style="padding: 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 1.1rem; letter-spacing: 2px; text-align: center;">
+                    <input type="text" id="schedule-time" placeholder="HH:mm" pattern="^([01]?[0-9]|2[0-3]):[0-5][0-9]$"
+                        required
+                        style="padding: 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 1.1rem; letter-spacing: 2px; text-align: center;">
                 </div>
-                
+
                 <div class="form-group">
                     <label>ชื่อกิจกรรม (Activity)</label>
                     <input type="text" id="schedule-title" placeholder="เช่น บอสข้ามเซิฟ" required>
                 </div>
-                
+
                 <div class="form-group toggle-group" style="margin-top: 1rem;">
                     <label>
                         <input type="checkbox" id="schedule-is-visible" checked>
@@ -245,7 +304,9 @@
                 </div>
 
                 <div class="modal-actions">
-                    <button type="button" id="btn-delete-schedule" class="btn" style="background:#ef4444;color:#fff;display:none;margin-right:auto;" onclick="deleteScheduleEvent()">ลบกิจกรรม</button>
+                    <button type="button" id="btn-delete-schedule" class="btn"
+                        style="background:#ef4444;color:#fff;display:none;margin-right:auto;"
+                        onclick="deleteScheduleEvent()">ลบกิจกรรม</button>
                     <button type="button" class="btn btn-cancel" onclick="closeModal('schedule-modal')">ยกเลิก</button>
                     <button type="submit" class="btn secondary">บันทึกข้อมูล</button>
                 </div>
@@ -259,20 +320,28 @@
             <h2 style="margin-top:0; color: #facc15; text-align: center;">🔄 รีเซ็ตเวลาหลังเปิดเซิฟเวอร์</h2>
             <form id="reset-server-form">
                 <div class="form-group" style="margin-bottom: 1.25rem;">
-                    <label style="color: var(--accent-cyan); font-weight: 600; display: block; margin-bottom: 6px;">🎮 1. เวลาเปิดเซิฟให้เข้าเล่นได้ (เกิดทันที)</label>
-                    <input type="text" id="reset-playable-time" placeholder="เลือก วัน-เวลา ที่เข้าเล่นได้" required style="padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.5); color: #fff; font-size: 1rem; width: 100%; text-align: center;">
-                    <small style="color: #94a3b8; font-size: 0.75rem; margin-top: 4px; display: block;">* สำหรับบอสที่ไม่มีเวลาเกิดครั้งแรก (จะเปลี่ยนเป็น SPAWNED ทันที)</small>
+                    <label style="color: var(--accent-cyan); font-weight: 600; display: block; margin-bottom: 6px;">🎮
+                        1. เวลาเปิดเซิฟให้เข้าเล่นได้ (เกิดทันที)</label>
+                    <input type="text" id="reset-playable-time" placeholder="เลือก วัน-เวลา ที่เข้าเล่นได้" required
+                        style="padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.5); color: #fff; font-size: 1rem; width: 100%; text-align: center;">
+                    <small style="color: #94a3b8; font-size: 0.75rem; margin-top: 4px; display: block;">*
+                        สำหรับบอสที่ไม่มีเวลาเกิดครั้งแรก (จะเปลี่ยนเป็น SPAWNED ทันที)</small>
                 </div>
 
                 <div class="form-group" style="margin-bottom: 1.25rem;">
-                    <label style="color: var(--accent-gold); font-weight: 600; display: block; margin-bottom: 6px;">⚙️ 2. เวลาเปิดเซิฟจริง (สำหรับบอสเกิดครั้งแรก)</label>
-                    <input type="text" id="reset-actual-time" placeholder="เลือก วัน-เวลา ที่ระบบเปิดจริง" required style="padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.5); color: #fff; font-size: 1rem; width: 100%; text-align: center;">
-                    <small style="color: #94a3b8; font-size: 0.75rem; margin-top: 4px; display: block;">* สำหรับบอสที่มีกำหนดเวลาเกิดครั้งแรก (เวลานี้ + เวลาเกิดครั้งแรก)</small>
+                    <label style="color: var(--accent-gold); font-weight: 600; display: block; margin-bottom: 6px;">⚙️
+                        2. เวลาเปิดเซิฟจริง (สำหรับบอสเกิดครั้งแรก)</label>
+                    <input type="text" id="reset-actual-time" placeholder="เลือก วัน-เวลา ที่ระบบเปิดจริง" required
+                        style="padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.5); color: #fff; font-size: 1rem; width: 100%; text-align: center;">
+                    <small style="color: #94a3b8; font-size: 0.75rem; margin-top: 4px; display: block;">*
+                        สำหรับบอสที่มีกำหนดเวลาเกิดครั้งแรก (เวลานี้ + เวลาเกิดครั้งแรก)</small>
                 </div>
 
                 <div class="form-group" style="margin-bottom: 1.5rem;">
-                    <label style="color: #fff; font-weight: 600; display: block; margin-bottom: 6px;">🌐 ขอบเขตการรีเซ็ต</label>
-                    <select id="reset-scope" style="padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.8); color: #fff; font-size: 1rem; width: 100%;">
+                    <label style="color: #fff; font-weight: 600; display: block; margin-bottom: 6px;">🌐
+                        ขอบเขตการรีเซ็ต</label>
+                    <select id="reset-scope"
+                        style="padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.8); color: #fff; font-size: 1rem; width: 100%;">
                         <option value="all">🌐 บอสทั้งหมด (Home & Invasion)</option>
                         <option value="home">🛡️ เฉพาะเซิร์ฟเวอร์เรา (Home Only)</option>
                         <option value="invasion">⚔️ เฉพาะเซิร์ฟเวอร์ศัตรู (Invasion Only)</option>
@@ -280,7 +349,8 @@
                 </div>
 
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-cancel" onclick="closeModal('reset-server-modal')">ยกเลิก</button>
+                    <button type="button" class="btn btn-cancel"
+                        onclick="closeModal('reset-server-modal')">ยกเลิก</button>
                     <button type="submit" class="btn secondary">ยืนยันการรีเซ็ต</button>
                 </div>
             </form>
@@ -317,7 +387,8 @@
         <div class="modal-content" style="max-width: 700px; width: 95%;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <h3 style="margin: 0;">🖥️ ประวัติการเข้าใช้งาน (Access Logs)</h3>
-                <button class="btn secondary" onclick="closeModal('access-log-modal')" style="padding: 4px 10px;">X</button>
+                <button class="btn secondary" onclick="closeModal('access-log-modal')"
+                    style="padding: 4px 10px;">X</button>
             </div>
             <div style="max-height: 400px; overflow-y: auto;">
                 <table class="boss-table" style="margin-top: 0;">
@@ -339,4 +410,5 @@
 
     <script src="app.js?v=49"></script>
 </body>
+
 </html>
