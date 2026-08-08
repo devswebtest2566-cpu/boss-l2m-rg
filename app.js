@@ -24,7 +24,7 @@ let resetPlayableFP = null;
 let resetActualFP = null;
 
 let isSoundEnabled = localStorage.getItem('isSoundEnabled') !== 'false';
-let alerted5MinBosses = new Set();
+let alerted1MinBosses = new Set();
 let lastSoundPlayTime = 0;
 
 function checkAutoInvasionSchedule() {
@@ -639,7 +639,7 @@ function updateCountdowns() {
         clockEl.textContent = `🕒 ${hh}:${mm}:${ss}`;
     }
 
-    let hasNew5MinWarning = false;
+    let hasNew1MinWarning = false;
 
     const startOfHour = new Date(now);
     startOfHour.setMinutes(0, 0, 0);
@@ -658,7 +658,7 @@ function updateCountdowns() {
         }
 
         const nextSpawn = new Date(boss.next_spawn_time).getTime();
-        const warning5MinTime = nextSpawn - (5 * 60 * 1000); // 5 นาที ก่อนเกิด
+        const warning1MinTime = nextSpawn - (1 * 60 * 1000); // 1 นาที ก่อนเกิด
 
         // Toggle in-hour-highlight on row element dynamically
         const trRow = el.closest('tr');
@@ -698,18 +698,18 @@ function updateCountdowns() {
             el.textContent = "⚡ SPAWNED";
         }
 
-        // เช็กการเตือนล่วงหน้า 5 นาที
-        if (now >= warning5MinTime && now < nextSpawn) {
-            const alertKey = `5m-${boss.id}-${boss.next_spawn_time}`;
-            if (!alerted5MinBosses.has(alertKey)) {
-                alerted5MinBosses.add(alertKey);
-                hasNew5MinWarning = true;
+        // เช็กการเตือนล่วงหน้า 1 นาที
+        if (now >= warning1MinTime && now < nextSpawn) {
+            const alertKey = `1m-${boss.id}-${boss.next_spawn_time}`;
+            if (!alerted1MinBosses.has(alertKey)) {
+                alerted1MinBosses.add(alertKey);
+                hasNew1MinWarning = true;
             }
         }
     });
 
-    // หากมีบอสเพิ่งเข้าสู่ช่วง 5 นาทีก่อนเกิด
-    if (hasNew5MinWarning) {
+    // หากมีบอสเพิ่งเข้าสู่ช่วง 1 นาทีก่อนเกิด
+    if (hasNew1MinWarning) {
         const COOLDOWN_MS = 90 * 1000; // Cooldown 90 วินาที ป้องกันเสียงดังซ้ำถี่เกินไปกรณีบอสเกิดติดๆ กัน
         if (now - lastSoundPlayTime >= COOLDOWN_MS) {
             playBossSpawnSound();
