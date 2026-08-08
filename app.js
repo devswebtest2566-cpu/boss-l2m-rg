@@ -337,8 +337,16 @@ function initRealtime() {
     supabaseClient
         .channel('public:bosses')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'bosses' }, payload => {
-            // เมื่อมีการแก้ไขบอส (เช่น เวลาตายถูกอัปเดต) ให้ดึงข้อมูลใหม่ทันที
             fetchBosses();
+        })
+        .subscribe();
+        
+    supabaseClient
+        .channel('public:schedule_events')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_events' }, payload => {
+            if (typeof fetchScheduleEvents === 'function') {
+                fetchScheduleEvents();
+            }
         })
         .subscribe();
 }
@@ -360,11 +368,13 @@ function applyRoleUI() {
     const addBtn = document.getElementById('add-boss-btn');
     const logBtn = document.getElementById('log-btn');
     const resetBtn = document.getElementById('reset-boss-btn');
+    const addScheduleBtn = document.getElementById('add-schedule-btn');
     
     if (currentUserRole === 'viewer') {
         if (addBtn) addBtn.style.display = 'none';
         if (logBtn) logBtn.style.display = 'none';
         if (resetBtn) resetBtn.style.display = 'none';
+        if (addScheduleBtn) addScheduleBtn.style.display = 'none';
         
         let styleEl = document.getElementById('viewer-style');
         if (!styleEl) {
@@ -1327,3 +1337,213 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+// --- Schedule Logic ---
+let isScheduleView = false;
+window.toggleScheduleView = function() {
+    isScheduleView = !isScheduleView;
+    const mainContent = document.getElementById('main-content');
+    const scheduleContent = document.getElementById('schedule-main-content');
+    const toggleBtn = document.getElementById('toggle-schedule-btn');
+    const invasionBtn = document.getElementById('invasion-btn');
+    const searchBox = document.querySelector('.search-box');
+
+    if (isScheduleView) {
+        mainContent.style.display = 'none';
+        scheduleContent.style.display = 'block';
+        toggleBtn.textContent = '🛡️ กลับหน้าบอส';
+        toggleBtn.style.background = 'linear-gradient(135deg, #0ea5e9, #2563eb)';
+        if (invasionBtn) invasionBtn.style.display = 'none';
+        if (searchBox) searchBox.style.display = 'none';
+        
+        const addBossBtn = document.getElementById('add-boss-btn');
+        const resetBossBtn = document.getElementById('reset-boss-btn');
+        if (addBossBtn) addBossBtn.style.display = 'none';
+        if (resetBossBtn) resetBossBtn.style.display = 'none';
+        
+        renderSchedule();
+    } else {
+        mainContent.style.display = 'block';
+        scheduleContent.style.display = 'none';
+        toggleBtn.textContent = '📅 ตารางกิจกรรม';
+        toggleBtn.style.background = 'linear-gradient(135deg, #8b5cf6, #6d28d9)';
+        if (invasionBtn) invasionBtn.style.display = 'inline-flex';
+        if (searchBox) searchBox.style.display = 'flex';
+        
+        applyRoleUI();
+    }
+}
+
+let scheduleEvents = [];
+
+window.fetchScheduleEvents = async function() {
+    if (!supabaseClient) return;
+    const { data, error } = await supabaseClient
+        .from('schedule_events')
+        .select('*')
+        .order('time', { ascending: true });
+        
+    if (error) {
+        console.error('Error fetching schedule events:', error);
+        return;
+    }
+    
+    // Map DB column names to JS object names
+    scheduleEvents = (data || []).map(row => ({
+        id: row.id,
+        day: row.day,
+        time: row.time,
+        title: row.title,
+        isVisible: row.is_visible
+    }));
+    
+    renderSchedule();
+}
+
+window.renderSchedule = function() {
+    const grid = document.getElementById('schedule-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    
+    const days = [
+        { id: '1', name: 'จันทร์' },
+        { id: '2', name: 'อังคาร' },
+        { id: '3', name: 'พุธ' },
+        { id: '4', name: 'พฤหัสบดี' },
+        { id: '5', name: 'ศุกร์' },
+        { id: '6', name: 'เสาร์' },
+        { id: '0', name: 'อาทิตย์' }
+    ];
+
+    days.forEach(day => {
+        const col = document.createElement('div');
+        col.className = 'schedule-day-column';
+        col.innerHTML = `<div class="schedule-day-header">${day.name}</div>`;
+        
+        const eventsContainer = document.createElement('div');
+        eventsContainer.className = 'schedule-events-container';
+        
+        const dayEvents = scheduleEvents.filter(e => e.day === day.id);
+        // Ensure sorted by time
+        dayEvents.sort((a, b) => a.time.localeCompare(b.time));
+        
+        dayEvents.forEach(ev => {
+            const card = document.createElement('div');
+            card.className = 'schedule-event-card' + (ev.isVisible ? '' : ' hidden-event');
+            card.onclick = () => openScheduleModal(ev.id);
+            
+            const visibilityIcon = ev.isVisible ? '' : '<span class="event-visibility-icon" title="ซ่อนอยู่">👁️‍🗨️</span>';
+            
+            card.innerHTML = `
+                ${visibilityIcon}
+                <div class="event-time">${ev.time}</div>
+                <div class="event-title">${ev.title}</div>
+            `;
+            eventsContainer.appendChild(card);
+        });
+        
+        col.appendChild(eventsContainer);
+        grid.appendChild(col);
+    });
+}
+
+window.openScheduleModal = function(id = null) {
+    if (currentUserRole === 'viewer') return; // Prevent viewers from opening the modal
+
+    const form = document.getElementById('schedule-form');
+    if (!form) return;
+    form.reset();
+    
+    const delBtn = document.getElementById('btn-delete-schedule');
+    const modalTitle = document.getElementById('schedule-modal-title');
+    
+    if (id) {
+        const ev = scheduleEvents.find(e => e.id === id);
+        if (ev) {
+            document.getElementById('schedule-id').value = ev.id;
+            document.getElementById('schedule-day').value = ev.day;
+            document.getElementById('schedule-time').value = ev.time;
+            document.getElementById('schedule-title').value = ev.title;
+            document.getElementById('schedule-is-visible').checked = ev.isVisible;
+            if (delBtn) delBtn.style.display = 'inline-block';
+            if (modalTitle) modalTitle.textContent = 'แก้ไขกิจกรรม';
+        }
+    } else {
+        document.getElementById('schedule-id').value = '';
+        if (delBtn) delBtn.style.display = 'none';
+        if (modalTitle) modalTitle.textContent = 'เพิ่มกิจกรรม';
+    }
+    
+    openModal('schedule-modal');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Initial fetch
+    fetchScheduleEvents();
+
+    const sForm = document.getElementById('schedule-form');
+    if (sForm) {
+        sForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (currentUserRole === 'viewer') return;
+            
+            const id = document.getElementById('schedule-id').value;
+            const day = document.getElementById('schedule-day').value;
+            const time = document.getElementById('schedule-time').value;
+            const title = document.getElementById('schedule-title').value;
+            const isVisible = document.getElementById('schedule-is-visible').checked;
+            
+            const payload = {
+                day: day,
+                time: time,
+                title: title,
+                is_visible: isVisible
+            };
+            
+            if (id) {
+                // Update existing event
+                const { error } = await supabaseClient.from('schedule_events').update(payload).eq('id', id);
+                if (error) {
+                    console.error('Error updating event:', error);
+                    swalDark.fire('เกิดข้อผิดพลาด', 'ไม่สามารถอัปเดตข้อมูลได้', 'error');
+                }
+            } else {
+                // Insert new event
+                const { error } = await supabaseClient.from('schedule_events').insert([payload]);
+                if (error) {
+                    console.error('Error inserting event:', error);
+                    swalDark.fire('เกิดข้อผิดพลาด', 'ไม่สามารถเพิ่มข้อมูลได้', 'error');
+                }
+            }
+            
+            closeModal('schedule-modal');
+            fetchScheduleEvents();
+        });
+    }
+});
+
+window.deleteScheduleEvent = async function() {
+    if (currentUserRole === 'viewer') return;
+    const id = document.getElementById('schedule-id').value;
+    if (!id) return;
+    
+    const result = await swalDark.fire({
+        title: 'ยืนยันการลบกิจกรรม',
+        text: 'ต้องการลบกิจกรรมนี้ออกจากตารางหรือไม่?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'ลบ',
+        cancelButtonText: 'ยกเลิก',
+        customClass: { confirmButton: 'btn action-dead', cancelButton: 'btn btn-cancel' }
+    });
+    
+    if (result.isConfirmed) {
+        const { error } = await supabaseClient.from('schedule_events').delete().eq('id', id);
+        if (error) {
+            console.error('Error deleting event:', error);
+            swalDark.fire('เกิดข้อผิดพลาด', 'ไม่สามารถลบข้อมูลได้', 'error');
+        } else {
+            closeModal('schedule-modal');
+            fetchScheduleEvents();
+        }
+    }
+}
