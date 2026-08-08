@@ -10,6 +10,10 @@ if (SUPABASE_URL !== 'YOUR_SUPABASE_URL_HERE') {
 let currentUserRole = 'viewer';
 
 // --- Global Variables ---
+let timeOffset = 0;
+function getNow() {
+    return Date.now() + timeOffset;
+}
 let bosses = [];
 let isInvasionMode = false;
 let countdownInterval = null;
@@ -24,7 +28,7 @@ let alerted5MinBosses = new Set();
 let lastSoundPlayTime = 0;
 
 function checkAutoInvasionSchedule() {
-    const now = Date.now();
+    const now = getNow();
     const thaiDate = new Date(now + (7 * 3600 * 1000));
     const day = thaiDate.getUTCDay(); // 1=Mon, 3=Wed, 5=Fri
     const hour = thaiDate.getUTCHours();
@@ -82,6 +86,15 @@ const searchInput = document.getElementById('search-input');
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
+    fetch('https://worldtimeapi.org/api/timezone/Asia/Bangkok')
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.utc_datetime) {
+                timeOffset = new Date(data.utc_datetime).getTime() - Date.now();
+            }
+        })
+        .catch(e => console.error('Time sync error:', e));
+
     lastAutoPeriodState = checkAutoInvasionSchedule();
     if (lastAutoPeriodState && !isInvasionMode) {
         window.toggleInvasionMode();
@@ -141,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const resetBossBtn = document.getElementById('reset-boss-btn');
     if (resetBossBtn) {
         resetBossBtn.addEventListener('click', () => {
-            const now = new Date();
+            const now = new Date(getNow());
             if (resetPlayableFP) resetPlayableFP.setDate(now);
             if (resetActualFP) resetActualFP.setDate(now);
             openModal('reset-server-modal');
@@ -458,7 +471,7 @@ function createBossRow(boss, index) {
     const nextSpawnTime = boss.next_spawn_time ? new Date(boss.next_spawn_time).getTime() : 0;
     
     // Check if spawning in current hour
-    const now = Date.now();
+    const now = getNow();
     const startOfHour = new Date(now);
     startOfHour.setMinutes(0, 0, 0);
     const startOfNextHour = new Date(startOfHour);
@@ -595,7 +608,7 @@ function playBossSpawnSound() {
 }
 
 function updateCountdowns() {
-    const now = Date.now();
+    const now = getNow();
     
     const currentPeriodState = checkAutoInvasionSchedule();
     if (currentPeriodState !== lastAutoPeriodState) {
@@ -704,7 +717,7 @@ function getThaiDateFromUTC(dateInput) {
 function formatHHmm(dateInput) {
     if (!dateInput) return '--:--';
     const thaiDate = getThaiDateFromUTC(dateInput);
-    const nowThaiDate = getThaiDateFromUTC(Date.now());
+    const nowThaiDate = getThaiDateFromUTC(getNow());
     
     const hh = String(thaiDate.getUTCHours()).padStart(2, '0');
     const min = String(thaiDate.getUTCMinutes()).padStart(2, '0');
@@ -827,7 +840,7 @@ window.openDeadModal = async function (id) {
     
     if (boss.next_spawn_time) {
         const nextTime = new Date(boss.next_spawn_time).getTime();
-        if (nextTime > Date.now()) {
+        if (nextTime > getNow()) {
             const result = await swalDark.fire({
                 title: 'บอสยังไม่เกิด!',
                 text: 'เวลายังไม่ถึงกำหนดเกิด คุณแน่ใจหรือไม่ว่าบอสตายแล้ว (เกิดก่อนเวลา)?',
@@ -849,7 +862,7 @@ window.openDeadModal = async function (id) {
     if (lastSpawnEl) {
         if (boss.next_spawn_time) {
             const nextTime = new Date(boss.next_spawn_time).getTime();
-            if (nextTime <= Date.now()) {
+            if (nextTime <= getNow()) {
                 const d = new Date(boss.next_spawn_time);
                 const thaiMs = d.getTime() + (7 * 3600 * 1000);
                 const tDate = new Date(thaiMs);
@@ -867,7 +880,7 @@ window.openDeadModal = async function (id) {
     }
 
     let defaultTimeStr = '';
-    const nowUTC = new Date();
+    const nowUTC = new Date(getNow());
     const thaiTimeMs = nowUTC.getTime() + (7 * 3600 * 1000);
     const thaiDate = new Date(thaiTimeMs);
     const yyyy = thaiDate.getUTCFullYear();
@@ -1033,7 +1046,7 @@ window.skipSpawn = async function (id) {
     }
 
     const nextTime = new Date(boss.next_spawn_time).getTime();
-    const isEarly = nextTime > Date.now();
+    const isEarly = nextTime > getNow();
     
     const currentNext = new Date(boss.next_spawn_time);
     const minsToAdd = boss.regular_respawn_mins || 0;
