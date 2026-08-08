@@ -84,6 +84,37 @@ const bossTableBody = document.getElementById('boss-table-body');
 const addBossBtn = document.getElementById('add-boss-btn');
 const searchInput = document.getElementById('search-input');
 
+// --- Auto Format Time Inputs ---
+function setupTimeAutoFormat(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+
+    input.addEventListener('input', function (e) {
+        let val = e.target.value.replace(/\D/g, '');
+        if (val.length > 4) val = val.slice(0, 4);
+
+        if (val.length >= 3) {
+            let hh = val.slice(0, 2);
+            let mm = val.slice(2);
+            if (parseInt(hh, 10) > 23) hh = '23';
+            if (parseInt(mm, 10) > 59) mm = '59';
+            e.target.value = `${hh}:${mm}`;
+        } else if (val.length === 2) {
+            if (parseInt(val, 10) > 23) val = '23';
+            e.target.value = `${val}:`;
+        } else {
+            e.target.value = val;
+        }
+    });
+
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Backspace' && e.target.value.endsWith(':')) {
+            e.preventDefault();
+            e.target.value = e.target.value.slice(0, -2);
+        }
+    });
+}
+
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
     fetch('https://worldtimeapi.org/api/timezone/Asia/Bangkok')
@@ -99,6 +130,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (lastAutoPeriodState && !isInvasionMode) {
         window.toggleInvasionMode();
     }
+
+    setupTimeAutoFormat('dead-time');
+    setupTimeAutoFormat('schedule-time');
 
     if (addBossBtn) {
         addBossBtn.addEventListener('click', () => {
@@ -351,6 +385,43 @@ function initRealtime() {
         .subscribe();
 }
 
+async function logUserAccess() {
+    if (!supabaseClient) return;
+    if (sessionStorage.getItem('access_logged') === 'true') return;
+    
+    let ip = 'Unknown';
+    try {
+        const res = await fetch('https://api.ipify.org?format=json');
+        if (res.ok) {
+            const data = await res.json();
+            ip = data.ip || 'Unknown';
+        }
+    } catch (e) {
+        console.warn('Could not fetch IP, might be blocked by adblocker:', e);
+    }
+    
+    try {
+        let editorName = localStorage.getItem('editor_name');
+        if (!editorName || currentUserRole !== 'admin') {
+            editorName = 'Viewer';
+        }
+
+        const { error } = await supabaseClient.from('user_access_logs').insert([{
+            username: editorName,
+            role: currentUserRole || 'unknown',
+            ip_address: ip
+        }]);
+        
+        if (error) {
+            console.error('Error inserting access log:', error);
+        } else {
+            sessionStorage.setItem('access_logged', 'true');
+        }
+    } catch (e) {
+        console.error('Error in logUserAccess:', e);
+    }
+}
+
 function showDashboard() {
     const dashboard = document.getElementById('dashboard-screen');
     if (dashboard) {
@@ -362,6 +433,7 @@ function showDashboard() {
     fetchBosses();
     updateSoundBtnUI();
     initRealtime(); // เริ่มต้นระบบ Realtime
+    logUserAccess(); // บันทึกประวัติการเข้าใช้งานและ IP
 }
 
 function applyRoleUI() {
@@ -369,12 +441,14 @@ function applyRoleUI() {
     const logBtn = document.getElementById('log-btn');
     const resetBtn = document.getElementById('reset-boss-btn');
     const addScheduleBtn = document.getElementById('add-schedule-btn');
+    const accessLogBtn = document.getElementById('access-log-btn');
     
     if (currentUserRole === 'viewer') {
         if (addBtn) addBtn.style.display = 'none';
         if (logBtn) logBtn.style.display = 'none';
         if (resetBtn) resetBtn.style.display = 'none';
         if (addScheduleBtn) addScheduleBtn.style.display = 'none';
+        if (accessLogBtn) accessLogBtn.style.display = 'none';
         
         let styleEl = document.getElementById('viewer-style');
         if (!styleEl) {
@@ -387,6 +461,7 @@ function applyRoleUI() {
         if (addBtn) addBtn.style.display = 'inline-block';
         if (logBtn) logBtn.style.display = 'inline-block';
         if (resetBtn) resetBtn.style.display = 'inline-block';
+        if (accessLogBtn) accessLogBtn.style.display = 'inline-flex';
         
         let styleEl = document.getElementById('viewer-style');
         if (styleEl) styleEl.remove();
@@ -396,7 +471,8 @@ function applyRoleUI() {
 window.logout = async function() {
     if (!supabaseClient) return;
     await supabaseClient.auth.signOut();
-    localStorage.removeItem('editor_name'); // Clear name on logout
+    localStorage.removeItem('editor_name');
+    sessionStorage.removeItem('access_logged');
     const dashboard = document.getElementById('dashboard-screen');
     if (dashboard) {
         dashboard.style.opacity = '0';
@@ -1336,6 +1412,94 @@ document.addEventListener('keydown', (e) => {
         return false;
     }
 });
+
+window.openAccessLogModal = async function() {
+    if (currentUserRole === 'viewer') return;
+    
+    const { value: pin } = await swalDark.fire({
+        title: '🔒 ยืนยันสิทธิ์',
+        text: 'กรุณากรอกรหัสผ่านเพื่อดู IP Address',
+        input: 'password',
+        inputPlaceholder: 'รหัสผ่าน',
+        showCancelButton: true,
+        confirmButtonText: 'ตกลง',
+        cancelButtonText: 'ยกเลิก',
+        preConfirm: (pin) => {
+            if (pin !== 'nomercy') {
+                Swal.showValidationMessage('รหัสผ่านไม่ถูกต้อง');
+            }
+            return pin;
+        }
+    });
+
+    if (!pin) return;
+    
+    openModal('access-log-modal');
+    const tbody = document.getElementById('access-log-table-body');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">กำลังโหลดข้อมูล...</td></tr>';
+    
+    if (!supabaseClient) return;
+    
+    const { data, error } = await supabaseClient
+        .from('user_access_logs')
+        .select('*')
+        .order('login_time', { ascending: false })
+        .limit(100);
+        
+    if (error) {
+        console.error('Error fetching access logs:', error);
+        if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #ef4444;">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+        return;
+    }
+    
+    if (tbody) {
+        tbody.innerHTML = '';
+        if (data && data.length > 0) {
+            // Group by IP and Username
+            const groupedLogs = {};
+            data.forEach(log => {
+                const key = `${log.ip_address || '-'}_${log.username}`;
+                if (!groupedLogs[key]) {
+                    groupedLogs[key] = {
+                        ip: log.ip_address || '-',
+                        username: log.username,
+                        role: log.role,
+                        times: []
+                    };
+                }
+                const logTime = new Date(log.login_time);
+                const formatTime = `${logTime.toLocaleDateString('th-TH')} ${logTime.toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}`;
+                groupedLogs[key].times.push(formatTime);
+            });
+
+            Object.values(groupedLogs).forEach(group => {
+                const tr = document.createElement('tr');
+                
+                let roleHtml = '';
+                if (group.role === 'admin') {
+                    roleHtml = '<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4);">Admin</span>';
+                } else {
+                    roleHtml = '<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4);">Viewer</span>';
+                }
+                
+                let timesDisplay = group.times.slice(0, 3).join('<br>');
+                if (group.times.length > 3) {
+                    timesDisplay += `<br><span style="color: #64748b; font-size: 0.75rem;">และอีก ${group.times.length - 3} ครั้ง...</span>`;
+                }
+                
+                tr.innerHTML = `
+                    <td style="font-family: monospace; font-size: 0.85rem; line-height: 1.4;">${timesDisplay}</td>
+                    <td style="color: #facc15;">${group.username}</td>
+                    <td>${roleHtml}</td>
+                    <td style="font-family: monospace; color: #94a3b8;">${group.ip}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">ยังไม่มีประวัติการเข้าใช้งาน</td></tr>';
+        }
+    }
+}
 
 // --- Schedule Logic ---
 let isScheduleView = false;

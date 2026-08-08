@@ -26,6 +26,9 @@
                     <span id="live-thai-clock" class="badge" style="background: rgba(0, 242, 254, 0.1); border: 1px solid rgba(0, 242, 254, 0.3); color: #00f2fe; letter-spacing: 1px; font-family: monospace; font-size: 0.85rem;">🕒 --:--:--</span>
                     <button id="sound-toggle-btn" class="btn secondary" onclick="toggleSoundNotification()" title="เปิด/ปิด เสียงเตือนเมื่อบอสเกิด" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4);">🔔 เสียง: เปิด</button>
                     <button id="log-btn" class="btn secondary" onclick="openLogModal()" title="ประวัติการแก้ไข">📜 ประวัติ</button>
+                    <button id="access-log-btn" class="btn logout-icon-btn" onclick="openAccessLogModal()" title="ประวัติการเข้าใช้งาน" style="margin-right: 0.5rem; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); color: #3b82f6;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+                    </button>
                     <button id="logout-btn" class="btn logout-icon-btn" onclick="logout()" title="ออกจากระบบ">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                     </button>
@@ -309,6 +312,31 @@
         </div>
     </div>
 
-    <script src="app.js?v=42"></script>
+    <!-- Access Log Modal -->
+    <div id="access-log-modal" class="modal">
+        <div class="modal-content" style="max-width: 700px; width: 95%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 style="margin: 0;">🖥️ ประวัติการเข้าใช้งาน (Access Logs)</h3>
+                <button class="btn secondary" onclick="closeModal('access-log-modal')" style="padding: 4px 10px;">X</button>
+            </div>
+            <div style="max-height: 400px; overflow-y: auto;">
+                <table class="boss-table" style="margin-top: 0;">
+                    <thead>
+                        <tr>
+                            <th style="padding: 8px;">เวลา</th>
+                            <th style="padding: 8px;">ผู้ใช้</th>
+                            <th style="padding: 8px;">สิทธิ์</th>
+                            <th style="padding: 8px;">IP Address</th>
+                        </tr>
+                    </thead>
+                    <tbody id="access-log-table-body">
+                        <!-- Filled by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js?v=49"></script>
 </body>
 </html>
