@@ -1122,7 +1122,21 @@ async function handleConfirmDeath(e) {
         const ddFormat = String(d).padStart(2, '0');
         const hhFormat = String(inputHours).padStart(2, '0');
         const minFormat = String(inputMins).padStart(2, '0');
-        addLog("Dead", boss.name, `บันทึกเวลาตายเป็น ${ddFormat}/${mmFormat} ${hhFormat}:${minFormat}`, boss.server_type);
+        
+        let oldDeadStr = "ยังไม่ระบุ";
+        if (boss.last_death_time) {
+            const oldD = new Date(boss.last_death_time);
+            const oldThaiMs = oldD.getTime() + (7 * 3600 * 1000);
+            const oldT = new Date(oldThaiMs);
+            const oDD = String(oldT.getUTCDate()).padStart(2, '0');
+            const oMM = String(oldT.getUTCMonth() + 1).padStart(2, '0');
+            const oHH = String(oldT.getUTCHours()).padStart(2, '0');
+            const oMin = String(oldT.getUTCMinutes()).padStart(2, '0');
+            oldDeadStr = `${oDD}/${oMM} ${oHH}:${oMin}`;
+        }
+        const newDeadStr = `${ddFormat}/${mmFormat} ${hhFormat}:${minFormat}`;
+        
+        addLog("Dead", boss.name, `บันทึกเวลาตาย (เปลี่ยนจาก ${oldDeadStr} เป็น ${newDeadStr})`, boss.server_type);
     }
 
     closeModal('dead-modal');
@@ -1212,7 +1226,26 @@ window.skipSpawn = async function (id) {
     if (error) {
         swalDark.fire('Error', "Error skipping spawn: " + error.message, 'error');
     } else {
-        addLog("Skip", boss.name, "บอสไม่เกิด 1 รอบ", boss.server_type);
+        let oldDeadStr = "ยังไม่ระบุ";
+        if (boss.last_death_time) {
+            const oldD = new Date(boss.last_death_time);
+            const oldThaiMs = oldD.getTime() + (7 * 3600 * 1000);
+            const oldT = new Date(oldThaiMs);
+            const oDD = String(oldT.getUTCDate()).padStart(2, '0');
+            const oMM = String(oldT.getUTCMonth() + 1).padStart(2, '0');
+            const oHH = String(oldT.getUTCHours()).padStart(2, '0');
+            const oMin = String(oldT.getUTCMinutes()).padStart(2, '0');
+            oldDeadStr = `${oDD}/${oMM} ${oHH}:${oMin}`;
+        }
+        const newThaiMs = currentNext.getTime() + (7 * 3600 * 1000);
+        const newT = new Date(newThaiMs);
+        const nDD_dead = String(newT.getUTCDate()).padStart(2, '0');
+        const nMM_dead = String(newT.getUTCMonth() + 1).padStart(2, '0');
+        const nHH_dead = String(newT.getUTCHours()).padStart(2, '0');
+        const nMin_dead = String(newT.getUTCMinutes()).padStart(2, '0');
+        const newDeadStr = `${nDD_dead}/${nMM_dead} ${nHH_dead}:${nMin_dead}`;
+
+        addLog("Skip", boss.name, `บอสไม่เกิด 1 รอบ (เปลี่ยนเวลาตายจาก ${oldDeadStr} เป็น ${newDeadStr})`, boss.server_type);
         fetchBosses();
     }
 }
