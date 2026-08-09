@@ -7,7 +7,7 @@
     <title>Revengers time boss</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=3">
+    <link rel="stylesheet" href="styles.css?v=5">
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- SweetAlert2 -->
@@ -68,8 +68,10 @@
             <div style="display: flex; gap: 10px;">
                 <button id="toggle-schedule-btn" class="btn secondary" onclick="toggleScheduleView()"
                     title="เปิดตารางกิจกรรม"
-                    style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white;">📅
-                    ตารางกิจกรรม</button>
+                    style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white; position: relative;">📅
+                    ตารางกิจกรรม
+                    <span id="schedule-notification-dot" class="notification-dot"></span>
+                </button>
                 <button id="invasion-btn" class="btn outline-btn" onclick="toggleInvasionMode()"
                     title="สลับโหมด Server Invasion"
                     style="border: 1px solid #ef4444; color: #ef4444; background: transparent;">⚔️ Server
@@ -408,7 +410,7 @@
         </div>
     </div>
 
-    <script src="app.js?v=49"></script>
+    <script src="app.js?v=51"></script>
 </body>
 
 </html>

@@ -694,6 +694,13 @@ function playBossSpawnSound() {
 }
 
 function updateCountdowns() {
+    if (typeof updateScheduleHighlights === 'function') {
+        updateScheduleHighlights();
+    }
+    if (typeof checkScheduleNotifications === 'function') {
+        checkScheduleNotifications();
+    }
+
     const now = getNow();
 
     const currentPeriodState = checkAutoInvasionSchedule();
@@ -1526,6 +1533,7 @@ window.toggleScheduleView = function () {
         if (resetBossBtn) resetBossBtn.style.display = 'none';
 
         renderSchedule();
+        if (typeof checkScheduleNotifications === 'function') checkScheduleNotifications();
     } else {
         mainContent.style.display = 'block';
         scheduleContent.style.display = 'none';
@@ -1582,6 +1590,7 @@ window.renderSchedule = function () {
     days.forEach(day => {
         const col = document.createElement('div');
         col.className = 'schedule-day-column';
+        col.id = `schedule-day-col-${day.id}`;
         col.innerHTML = `<div class="schedule-day-header">${day.name}</div>`;
 
         const eventsContainer = document.createElement('div');
@@ -1594,6 +1603,8 @@ window.renderSchedule = function () {
         dayEvents.forEach(ev => {
             const card = document.createElement('div');
             card.className = 'schedule-event-card' + (ev.isVisible ? '' : ' hidden-event');
+            card.id = `schedule-event-card-${ev.id}`;
+            card.dataset.time = ev.time;
             card.onclick = () => openScheduleModal(ev.id);
 
             const visibilityIcon = ev.isVisible ? '' : '<span class="event-visibility-icon" title="ซ่อนอยู่">👁️‍🗨️</span>';
@@ -1609,6 +1620,106 @@ window.renderSchedule = function () {
         col.appendChild(eventsContainer);
         grid.appendChild(col);
     });
+
+    if (typeof updateScheduleHighlights === 'function') {
+        updateScheduleHighlights();
+    }
+}
+
+window.updateScheduleHighlights = function () {
+    if (!isScheduleView) return;
+
+    const now = getNow();
+    const thaiDate = new Date(now + (7 * 3600 * 1000));
+    const currentDay = String(thaiDate.getUTCDay());
+    const hh = String(thaiDate.getUTCHours()).padStart(2, '0');
+    const mm = String(thaiDate.getUTCMinutes()).padStart(2, '0');
+    const currentTimeStr = `${hh}:${mm}`;
+
+    // Remove all highlights first
+    document.querySelectorAll('.schedule-day-column').forEach(el => el.classList.remove('current-day-highlight'));
+    document.querySelectorAll('.schedule-event-card').forEach(el => {
+        el.classList.remove('current-event-highlight', 'next-event-highlight');
+    });
+
+    // Highlight current day column
+    const currentDayCol = document.getElementById(`schedule-day-col-${currentDay}`);
+    if (currentDayCol) {
+        currentDayCol.classList.add('current-day-highlight');
+    }
+
+    // Find current and next events for today
+    const todayEvents = scheduleEvents.filter(e => e.day === currentDay && e.isVisible).sort((a, b) => a.time.localeCompare(b.time));
+    
+    let currentEventId = null;
+    let nextEventId = null;
+
+    for (let i = 0; i < todayEvents.length; i++) {
+        if (todayEvents[i].time <= currentTimeStr) {
+            currentEventId = todayEvents[i].id;
+        } else if (!nextEventId) {
+            nextEventId = todayEvents[i].id;
+        }
+    }
+
+    if (currentEventId) {
+        const el = document.getElementById(`schedule-event-card-${currentEventId}`);
+        if (el) el.classList.add('current-event-highlight');
+    }
+    if (nextEventId) {
+        const el = document.getElementById(`schedule-event-card-${nextEventId}`);
+        if (el) el.classList.add('next-event-highlight');
+    }
+}
+
+window.checkScheduleNotifications = function() {
+    if (!scheduleEvents || scheduleEvents.length === 0) return;
+
+    const now = getNow();
+    const thaiDate = new Date(now + (7 * 3600 * 1000));
+    const currentDay = String(thaiDate.getUTCDay());
+    const hh = String(thaiDate.getUTCHours()).padStart(2, '0');
+    const mm = String(thaiDate.getUTCMinutes()).padStart(2, '0');
+    const currentTimeStr = `${hh}:${mm}`;
+    const todayDateStr = `${thaiDate.getUTCFullYear()}-${thaiDate.getUTCMonth()}-${thaiDate.getUTCDate()}`;
+
+    // Find current event for today
+    const todayEvents = scheduleEvents.filter(e => e.day === currentDay && e.isVisible).sort((a, b) => a.time.localeCompare(b.time));
+    
+    let currentEventId = null;
+    for (let i = 0; i < todayEvents.length; i++) {
+        if (todayEvents[i].time <= currentTimeStr) {
+            currentEventId = todayEvents[i].id;
+        }
+    }
+
+    const dotEl = document.getElementById('schedule-notification-dot');
+    if (!dotEl) return;
+
+    if (currentEventId) {
+        // We have an active event
+        const trackingKey = `${currentEventId}_${todayDateStr}`;
+        const acknowledgedKey = localStorage.getItem('acknowledged_schedule_event');
+
+        if (acknowledgedKey !== trackingKey) {
+            // Not acknowledged yet, show dot if not in schedule view
+            if (!isScheduleView) {
+                dotEl.style.display = 'block';
+            }
+            
+            // If they are currently looking at the schedule view, auto-acknowledge
+            if (isScheduleView) {
+                localStorage.setItem('acknowledged_schedule_event', trackingKey);
+                dotEl.style.display = 'none';
+            }
+        } else {
+            // Already acknowledged
+            dotEl.style.display = 'none';
+        }
+    } else {
+        // No active event
+        dotEl.style.display = 'none';
+    }
 }
 
 window.openScheduleModal = function (id = null) {
