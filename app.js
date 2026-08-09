@@ -1697,9 +1697,9 @@ window.updateScheduleHighlights = function () {
     let nextEventId = null;
 
     for (let i = 0; i < todayEvents.length; i++) {
-        if (todayEvents[i].time <= currentTimeStr) {
+        if (todayEvents[i].time === currentTimeStr) {
             currentEventId = todayEvents[i].id;
-        } else if (!nextEventId) {
+        } else if (todayEvents[i].time > currentTimeStr && !nextEventId) {
             nextEventId = todayEvents[i].id;
         }
     }
@@ -1730,7 +1730,7 @@ window.checkScheduleNotifications = function() {
     
     let currentEventId = null;
     for (let i = 0; i < todayEvents.length; i++) {
-        if (todayEvents[i].time <= currentTimeStr) {
+        if (todayEvents[i].time === currentTimeStr) {
             currentEventId = todayEvents[i].id;
         }
     }
