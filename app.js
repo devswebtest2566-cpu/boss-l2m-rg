@@ -1147,17 +1147,24 @@ window.skipSpawn = async function (id) {
     if (!supabaseClient) return;
 
     const boss = bosses.find(b => b.id === id);
-    if (!boss || !boss.next_spawn_time) {
-        swalDark.fire('เกิดข้อผิดพลาด', 'อัปเดตไม่ได้ (ยังไม่ทราบเวลาเกิดรอบถัดไป)', 'error');
-        return;
+    if (!boss) return;
+
+    let baseTimeMs;
+    let isMissingTime = false;
+    let currentNext = null;
+
+    if (!boss.next_spawn_time) {
+        baseTimeMs = getNow();
+        isMissingTime = true;
+        currentNext = new Date(baseTimeMs);
+    } else {
+        baseTimeMs = new Date(boss.next_spawn_time).getTime();
+        currentNext = new Date(boss.next_spawn_time);
     }
 
-    const nextTime = new Date(boss.next_spawn_time).getTime();
-    const isEarly = nextTime > getNow();
-
-    const currentNext = new Date(boss.next_spawn_time);
+    const isEarly = !isMissingTime && (baseTimeMs > getNow());
     const minsToAdd = boss.regular_respawn_mins || 0;
-    const nextSpawnDate = new Date(currentNext.getTime() + (minsToAdd * 60000));
+    const nextSpawnDate = new Date(baseTimeMs + (minsToAdd * 60000));
 
     // Format DD/MM HH:mm
     const thaiNextDate = getThaiDateFromUTC(nextSpawnDate);
@@ -1172,7 +1179,9 @@ window.skipSpawn = async function (id) {
         ⚡ เกิดรอบถัดไป: <strong>${displayFormatted}</strong>
     </div>`;
 
-    if (isEarly) {
+    if (isMissingTime) {
+        htmlContent = `<p style="color: #00f2fe; margin-bottom: 12px; font-weight: bold; font-size: 0.9rem;">ℹ️ บอสยังไม่มีเวลาเกิด ระบบจะใช้ <span style="text-decoration: underline;">เวลาปัจจุบัน</span> เป็นฐานในการคำนวณ!</p>` + htmlContent;
+    } else if (isEarly) {
         htmlContent = `<p style="color: #f59e0b; margin-bottom: 12px; font-weight: bold;">⚠️ บอสยังไม่ถึงเวลาเกิด!</p>` + htmlContent;
     }
 
