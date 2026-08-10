@@ -20,7 +20,6 @@ let countdownInterval = null;
 let searchQuery = '';
 let lastAutoPeriodState = false;
 let deadDateFP = null;
-let resetPlayableFP = null;
 let resetActualFP = null;
 
 let isSoundEnabled = localStorage.getItem('isSoundEnabled') !== 'false';
@@ -160,19 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const resetPlayableEl = document.getElementById('reset-playable-time');
     const resetActualEl = document.getElementById('reset-actual-time');
-
-    if (resetPlayableEl) {
-        resetPlayableFP = flatpickr(resetPlayableEl, {
-            enableTime: true,
-            dateFormat: "Y-m-d H:i",
-            altInput: true,
-            altFormat: "d/m/Y H:i",
-            disableMobile: "true",
-            time_24hr: true
-        });
-    }
 
     if (resetActualEl) {
         resetActualFP = flatpickr(resetActualEl, {
@@ -188,16 +175,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const resetBossBtn = document.getElementById('reset-boss-btn');
     if (resetBossBtn) {
         resetBossBtn.addEventListener('click', () => {
-            const now = new Date(getNow());
-            if (resetPlayableFP) resetPlayableFP.setDate(now);
-            if (resetActualFP) resetActualFP.setDate(now);
-            openModal('reset-server-modal');
+            const cb = document.getElementById('reset-clear-all-cb');
+            if (cb) cb.checked = false;
+            openModal('reset-modal-step1');
         });
     }
 
-    const resetServerForm = document.getElementById('reset-server-form');
-    if (resetServerForm) {
-        resetServerForm.addEventListener('submit', handleConfirmServerReset);
+    const cbResetClearAll = document.getElementById('reset-clear-all-cb');
+    if (cbResetClearAll) {
+        cbResetClearAll.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                swalDark.fire('คำเตือน', 'เวลาตายล่าสุด และ เวลาเกิดรอบถัดไป ของบอสทุกตัวจะถูกรีเซตเป็นค่าว่างทั้งหมด!', 'warning');
+            }
+        });
+    }
+
+    const resetStep1Form = document.getElementById('reset-step1-form');
+    if (resetStep1Form) {
+        resetStep1Form.addEventListener('submit', handleConfirmStep1);
+    }
+
+    const resetStep2Form = document.getElementById('reset-step2-form');
+    if (resetStep2Form) {
+        resetStep2Form.addEventListener('submit', handleConfirmStep2);
     }
 
     if (searchInput) {
@@ -1352,87 +1352,232 @@ window.openLogModal = async function () {
     document.getElementById('log-table-body').innerHTML = html;
 }
 
-window.handleConfirmServerReset = async function (e) {
+// --- New Time Reset System ---
+
+window.handleConfirmStep1 = async function (e) {
     e.preventDefault();
     if (!supabaseClient) return;
 
-    const playableDate = resetPlayableFP ? resetPlayableFP.selectedDates[0] : null;
-    const actualDate = resetActualFP ? resetActualFP.selectedDates[0] : null;
-    const scope = document.getElementById('reset-scope').value;
+    const cb = document.getElementById('reset-clear-all-cb');
+    const isChecked = cb && cb.checked;
 
-    if (!playableDate || !actualDate) {
-        swalDark.fire('กรุณาเลือกเวลา', 'กรุณาระบุวัน-เวลาให้ครบทั้ง 2 ช่อง', 'warning');
+    if (isChecked) {
+        // Clear all boss times
+        const result = await swalDark.fire({
+            title: 'ยืนยันการล้างเวลาบอสทั้งหมด?',
+            text: 'ข้อมูลเวลาตายล่าสุดและเวลาเกิดครั้งต่อไปจะหายไปทั้งหมด',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'ใช่, ล้างข้อมูล',
+            cancelButtonText: 'ยกเลิก',
+            customClass: { confirmButton: 'btn action-dead', cancelButton: 'btn btn-cancel' }
+        });
+
+        if (!result.isConfirmed) return;
+
+        swalDark.fire({
+            title: '⏳ กำลังล้างเวลาบอส...',
+            allowOutsideClick: false,
+            didOpen: () => swalDark.showLoading()
+        });
+
+        try {
+            const { error } = await supabaseClient
+                .from('bosses')
+                .update({ last_death_time: null, next_spawn_time: null, use_first_spawn: false })
+                .neq('id', '00000000-0000-0000-0000-000000000000'); // Update all active bosses trick
+
+            if (error) throw error;
+
+            await addLog('ResetServer', 'ล้างเวลาทั้งหมด', 'ล้างเวลาเกิดและตายของบอสทั้งหมดเป็นค่าว่าง', 'home');
+            await fetchBosses();
+            closeModal('reset-modal-step1');
+
+            swalDark.fire({
+                icon: 'success',
+                title: 'สำเร็จ!',
+                text: 'ล้างเวลาบอสทั้งหมดเรียบร้อยแล้ว',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        } catch (err) {
+            console.error("Clear boss times error:", err);
+            swalDark.fire('เกิดข้อผิดพลาด', err.message || 'ไม่สามารถล้างเวลาได้', 'error');
+        }
+    } else {
+        // Go to step 2
+        closeModal('reset-modal-step1');
+        const now = new Date(getNow());
+        if (resetActualFP) resetActualFP.setDate(now);
+        openModal('reset-modal-step2');
+    }
+};
+
+window.handleConfirmStep2 = async function (e) {
+    e.preventDefault();
+    if (!supabaseClient) return;
+
+    const actualDate = resetActualFP ? resetActualFP.selectedDates[0] : null;
+    if (!actualDate) {
+        swalDark.fire('กรุณาเลือกเวลา', 'กรุณาระบุเวลาเปิดเซิฟจริง', 'warning');
         return;
     }
 
-    let targetBosses = bosses.filter(b => b.is_active);
+    const actualTimeMs = actualDate.getTime();
+    const actualStr = formatHHmm(actualDate);
+    const scope = document.getElementById('reset-scope-step2') ? document.getElementById('reset-scope-step2').value : 'all';
+
+    // Filter bosses with empty last_death_time
+    let targetBosses = bosses.filter(b => b.is_active && !b.last_death_time);
+    
     if (scope === 'home') {
         targetBosses = targetBosses.filter(b => b.server_type !== 'invasion');
-    } else if (scope === 'invasion') {
-        targetBosses = targetBosses.filter(b => b.server_type === 'invasion');
     }
-
+    
     if (targetBosses.length === 0) {
-        swalDark.fire('ไม่พบข้อมูล', 'ไม่พบบอสในขอบเขตที่เลือก', 'warning');
+        swalDark.fire('ไม่พบบอสที่ต้องอัปเดต', 'ไม่มีบอสที่เวลาตายล่าสุดเป็นค่าว่าง', 'info');
         return;
     }
 
+    // Calculate computed times
+    let computedSpawns = [];
+    
+    for (const boss of targetBosses) {
+        const hasFirstSpawn = (boss.first_spawn_mins && boss.first_spawn_mins > 0);
+        let minsToAdd = 0;
+        let useFirst = false;
+
+        if (hasFirstSpawn) {
+            minsToAdd = boss.first_spawn_mins;
+            useFirst = true;
+        } else {
+            minsToAdd = boss.regular_respawn_mins || 0;
+            useFirst = false;
+        }
+
+        const nextSpawnMs = actualTimeMs + (minsToAdd * 60 * 1000);
+        const nextSpawnDate = new Date(nextSpawnMs);
+
+        // Format for display
+        const thaiDate = new Date(nextSpawnMs + (7 * 3600 * 1000));
+        const nDD = String(thaiDate.getUTCDate()).padStart(2, '0');
+        const nMM = String(thaiDate.getUTCMonth() + 1).padStart(2, '0');
+        const nHH = String(thaiDate.getUTCHours()).padStart(2, '0');
+        const nMin = String(thaiDate.getUTCMinutes()).padStart(2, '0');
+        const displayTime = `${nDD}/${nMM} ${nHH}:${nMin}`;
+
+        computedSpawns.push({
+            id: boss.id,
+            name: boss.name,
+            server_type: boss.server_type,
+            nextSpawnDate: nextSpawnDate,
+            nextSpawnISO: nextSpawnDate.toISOString(),
+            useFirstSpawn: useFirst,
+            displayTime: displayTime
+        });
+    }
+
+    // Sort for display
+    computedSpawns.sort((a, b) => a.nextSpawnDate.getTime() - b.nextSpawnDate.getTime());
+
+    // Generate HTML for Popup 3
+    const homeSpawns = computedSpawns.filter(s => s.server_type !== 'invasion');
+    const invSpawns = computedSpawns.filter(s => s.server_type === 'invasion');
+
+    let htmlContent = `<div style="max-height: 300px; overflow-y: auto; text-align: left; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; font-size: 0.9rem;">`;
+
+    if (homeSpawns.length > 0) {
+        htmlContent += `<div style="margin-bottom: 10px;">
+            <div style="color: #00f2fe; font-weight: bold; border-bottom: 1px solid rgba(0, 242, 254, 0.3); padding-bottom: 4px; margin-bottom: 4px;">🛡️ เซิร์ฟเวอร์เรา (Home)</div>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tbody>`;
+        homeSpawns.forEach(item => {
+            htmlContent += `
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 4px; color: #fff;">${item.name}</td>
+                    <td style="padding: 4px; text-align: right; color: #00f2fe;">${item.displayTime}</td>
+                </tr>`;
+        });
+        htmlContent += `</tbody></table></div>`;
+    }
+
+    if (invSpawns.length > 0) {
+        htmlContent += `<div style="margin-bottom: 10px;">
+            <div style="color: #fca5a5; font-weight: bold; border-bottom: 1px solid rgba(239, 68, 68, 0.3); padding-bottom: 4px; margin-bottom: 4px; margin-top: 10px;">⚔️ เซิร์ฟศัตรู (Invasion)</div>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tbody>`;
+        invSpawns.forEach(item => {
+            htmlContent += `
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 4px; color: #fff;">${item.name}</td>
+                    <td style="padding: 4px; text-align: right; color: #fca5a5;">${item.displayTime}</td>
+                </tr>`;
+        });
+        htmlContent += `</tbody></table></div>`;
+    }
+    
+    htmlContent += `</div>`;
+
+    closeModal('reset-modal-step2');
+
+    // Show Popup 3
+    const confirmResult = await swalDark.fire({
+        title: 'ตรวจสอบเวลาเกิดบอส',
+        html: htmlContent,
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonText: '✅ ยืนยันการรีเซต',
+        cancelButtonText: '❌ ยกเลิก',
+        customClass: { confirmButton: 'btn secondary', cancelButton: 'btn btn-cancel' },
+        width: '600px'
+    });
+
+    if (confirmResult.isConfirmed) {
+        handleConfirmFinalReset(computedSpawns, actualStr);
+    }
+};
+
+window.handleConfirmFinalReset = async function(computedSpawns, actualStr) {
     swalDark.fire({
-        title: '⏳ กำลังรีเซ็ตเวลาหลังเปิดเซิฟ...',
-        text: `กำลังคำนวณและอัปเดตบอส ${targetBosses.length} ตัว`,
+        title: '⏳ กำลังบันทึกเวลาบอส...',
         allowOutsideClick: false,
         didOpen: () => swalDark.showLoading()
     });
 
     try {
-        for (const boss of targetBosses) {
-            const hasFirstSpawn = (boss.first_spawn_mins && boss.first_spawn_mins > 0);
-            let nextSpawnISO = null;
-            let useFirstSpawnFlag = false;
-
-            if (hasFirstSpawn) {
-                // บอสมีเวลาเกิดครั้งแรก -> ใช้เวลาเปิดเซิฟจริง + first_spawn_mins
-                const spawnTime = new Date(actualDate.getTime() + (boss.first_spawn_mins * 60 * 1000));
-                nextSpawnISO = spawnTime.toISOString();
-                useFirstSpawnFlag = true;
-            } else {
-                // บอสไม่มีเวลาเกิดครั้งแรก -> เกิดทันทีเมื่อเปิดเซิฟให้เข้าเล่นได้
-                nextSpawnISO = playableDate.toISOString();
-                useFirstSpawnFlag = false;
-            }
-
+        let updateCount = 0;
+        
+        for (const item of computedSpawns) {
             await supabaseClient
                 .from('bosses')
                 .update({
-                    next_spawn_time: nextSpawnISO,
-                    use_first_spawn: useFirstSpawnFlag,
+                    next_spawn_time: item.nextSpawnISO,
+                    use_first_spawn: item.useFirstSpawn,
                     last_death_time: null
                 })
-                .eq('id', boss.id);
+                .eq('id', item.id);
+            updateCount++;
         }
 
-        // Add Log History
-        const scopeLabel = scope === 'all' ? 'ทั้งหมด' : (scope === 'home' ? 'เซิร์ฟเรา' : 'เซิร์ฟศัตรู');
-        const playableStr = formatHHmm(playableDate);
-        const actualStr = formatHHmm(actualDate);
-        await addLog('ResetServer', 'รีเซ็ตเวลาหลังเปิดเซิฟ', `เปิดเข้าเล่น: ${playableStr} | เปิดจริง: ${actualStr} (${scopeLabel})`, scope === 'all' ? 'home' : scope);
+        await addLog('ResetServer', 'คำนวณเวลาหลังเปิดเซิฟ', `เปิดจริง: ${actualStr} (อัปเดต ${updateCount} ตัว)`, 'home');
 
         await fetchBosses();
-        closeModal('reset-server-modal');
 
         swalDark.fire({
             icon: 'success',
-            title: '🔄 รีเซ็ตเวลาสำเร็จ!',
-            text: `อัปเดตเวลารีเซ็ตบอส ${scopeLabel} เรียบร้อยแล้ว`,
+            title: '🔄 อัปเดตเวลาสำเร็จ!',
+            text: `รีเซ็ตเวลาบอสเรียบร้อยแล้ว (${updateCount} ตัว)`,
             timer: 2000,
             showConfirmButton: false
         });
 
     } catch (err) {
-        console.error("Reset server error:", err);
-        swalDark.fire('เกิดข้อผิดพลาด', err.message || 'ไม่สามารถรีเซ็ตเวลาได้', 'error');
+        console.error("Final reset error:", err);
+        swalDark.fire('เกิดข้อผิดพลาด', err.message || 'ไม่สามารถอัปเดตเวลาได้', 'error');
     }
-}
+};
+
+// --- End New Time Reset System ---
 
 // --- Disable DevTools & Right Click Protection ---
 document.addEventListener('contextmenu', (e) => {

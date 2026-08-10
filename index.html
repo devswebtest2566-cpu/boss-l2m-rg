@@ -316,44 +316,52 @@
         </div>
     </div>
 
-    <!-- Reset Server Maintenance Modal -->
-    <div id="reset-server-modal" class="modal">
+    <!-- Reset Server Maintenance Modal - Step 1 -->
+    <div id="reset-modal-step1" class="modal">
         <div class="modal-content" style="max-width: 500px; width: 90%;">
-            <h2 style="margin-top:0; color: #facc15; text-align: center;">🔄 รีเซ็ตเวลาหลังเปิดเซิฟเวอร์</h2>
-            <form id="reset-server-form">
-                <div class="form-group" style="margin-bottom: 1.25rem;">
-                    <label style="color: var(--accent-cyan); font-weight: 600; display: block; margin-bottom: 6px;">🎮
-                        1. เวลาเปิดเซิฟให้เข้าเล่นได้ (เกิดทันที)</label>
-                    <input type="text" id="reset-playable-time" placeholder="เลือก วัน-เวลา ที่เข้าเล่นได้" required
-                        style="padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.5); color: #fff; font-size: 1rem; width: 100%; text-align: center;">
-                    <small style="color: #94a3b8; font-size: 0.75rem; margin-top: 4px; display: block;">*
-                        สำหรับบอสที่ไม่มีเวลาเกิดครั้งแรก (จะเปลี่ยนเป็น SPAWNED ทันที)</small>
+            <h2 style="margin-top:0; color: #facc15; text-align: center;">🔄 รีเซ็ตเวลาบอส (ขั้นตอนที่ 1)</h2>
+            <form id="reset-step1-form">
+                <div class="form-group" style="margin-bottom: 1.5rem; background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                    <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; color: #fff; font-size: 1.1rem;">
+                        <input type="checkbox" id="reset-clear-all-cb" style="width: 20px; height: 20px;">
+                        รีเซตเวลาตายล่าสุด บอสทั้งหมดเป็นค่าว่าง
+                    </label>
                 </div>
-
-                <div class="form-group" style="margin-bottom: 1.25rem;">
-                    <label style="color: var(--accent-gold); font-weight: 600; display: block; margin-bottom: 6px;">⚙️
-                        2. เวลาเปิดเซิฟจริง (สำหรับบอสเกิดครั้งแรก)</label>
-                    <input type="text" id="reset-actual-time" placeholder="เลือก วัน-เวลา ที่ระบบเปิดจริง" required
-                        style="padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.5); color: #fff; font-size: 1rem; width: 100%; text-align: center;">
-                    <small style="color: #94a3b8; font-size: 0.75rem; margin-top: 4px; display: block;">*
-                        สำหรับบอสที่มีกำหนดเวลาเกิดครั้งแรก (เวลานี้ + เวลาเกิดครั้งแรก)</small>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-cancel" onclick="closeModal('reset-modal-step1')">ยกเลิก</button>
+                    <button type="submit" class="btn secondary">ถัดไป / ยืนยัน</button>
                 </div>
+            </form>
+        </div>
+    </div>
 
+    <!-- Reset Server Maintenance Modal - Step 2 -->
+    <div id="reset-modal-step2" class="modal">
+        <div class="modal-content" style="max-width: 500px; width: 90%;">
+            <h2 style="margin-top:0; color: #facc15; text-align: center;">🔄 กำหนดเวลาเปิดเซิฟเวอร์ (ขั้นตอนที่ 2)</h2>
+            <form id="reset-step2-form">
                 <div class="form-group" style="margin-bottom: 1.5rem;">
-                    <label style="color: #fff; font-weight: 600; display: block; margin-bottom: 6px;">🌐
-                        ขอบเขตการรีเซ็ต</label>
-                    <select id="reset-scope"
+                    <label style="color: var(--accent-gold); font-weight: 600; display: block; margin-bottom: 6px; text-align: center;">⚙️ เวลาเปิดเซิฟจริง (Actual Server Open Time)</label>
+                    <input type="text" id="reset-actual-time" placeholder="เลือก วัน-เวลา ที่ระบบเปิดจริง"
+                        style="padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.5); color: #fff; font-size: 1.1rem; width: 100%; text-align: center; letter-spacing: 1px;" required>
+                    <small style="color: #94a3b8; font-size: 0.8rem; margin-top: 8px; display: block; text-align: center;">
+                        * ระบบจะนำเวลานี้ไปคำนวณบวกกับเวลาเกิดของบอสแต่ละตัว
+                    </small>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label style="color: #fff; font-weight: 600; display: block; margin-bottom: 6px; text-align: center;">🌐 ขอบเขตการรีเซ็ต</label>
+                    <select id="reset-scope-step2"
                         style="padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.8); color: #fff; font-size: 1rem; width: 100%;">
-                        <option value="all">🌐 บอสทั้งหมด (Home & Invasion)</option>
-                        <option value="home">🛡️ เฉพาะเซิร์ฟเวอร์เรา (Home Only)</option>
-                        <option value="invasion">⚔️ เฉพาะเซิร์ฟเวอร์ศัตรู (Invasion Only)</option>
+                        <option value="all">🌐 บอสทั้งหมด (ทั้งสองโลก)</option>
+                        <option value="home">🛡️ เฉพาะโลกเรา (Home เท่านั้น)</option>
                     </select>
                 </div>
 
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-cancel"
-                        onclick="closeModal('reset-server-modal')">ยกเลิก</button>
-                    <button type="submit" class="btn secondary">ยืนยันการรีเซ็ต</button>
+                    <button type="button" class="btn btn-cancel" onclick="closeModal('reset-modal-step2')">ยกเลิก</button>
+                    <button type="submit" class="btn secondary">ตกลง / คำนวณเวลา</button>
                 </div>
             </form>
         </div>
