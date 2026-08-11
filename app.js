@@ -49,7 +49,6 @@ window.toggleInvasionMode = function () {
     if (isInvasionMode) {
         body.classList.add('invasion-active');
         if (invContainer) invContainer.style.display = 'block';
-        if (homeTitle) homeTitle.style.display = 'block';
         if (invBtn) {
             invBtn.style.background = '#ef4444';
             invBtn.style.color = '#fff';
@@ -57,7 +56,6 @@ window.toggleInvasionMode = function () {
     } else {
         body.classList.remove('invasion-active');
         if (invContainer) invContainer.style.display = 'none';
-        if (homeTitle) homeTitle.style.display = 'none';
         if (invBtn) {
             invBtn.style.background = 'transparent';
             invBtn.style.color = '#ef4444';
@@ -84,25 +82,54 @@ const addBossBtn = document.getElementById('add-boss-btn');
 const searchInput = document.getElementById('search-input');
 
 // --- Auto Format Time Inputs ---
+// --- Auto Format Time Inputs ---
 function setupTimeAutoFormat(inputId) {
     const input = document.getElementById(inputId);
     if (!input) return;
 
     input.addEventListener('input', function (e) {
-        let val = e.target.value.replace(/\D/g, '');
-        if (val.length > 4) val = val.slice(0, 4);
+        if (e.inputType === 'deleteContentBackward' || e.inputType === 'deleteContentForward') return;
 
-        if (val.length >= 3) {
-            let hh = val.slice(0, 2);
-            let mm = val.slice(2);
-            if (parseInt(hh, 10) > 23) hh = '23';
-            if (parseInt(mm, 10) > 59) mm = '59';
+        let cursor = e.target.selectionStart;
+        let val = e.target.value;
+        let parts = val.split(':');
+        
+        let hh = '', mm = '';
+        if (parts.length > 1) {
+            hh = parts[0].replace(/\D/g, '').slice(0, 2);
+            mm = parts[1].replace(/\D/g, '').slice(0, 2);
+            
+            if (hh.length === 2 && parseInt(hh, 10) > 23) hh = '23';
+            if (mm.length === 2 && parseInt(mm, 10) > 59) mm = '59';
+            
             e.target.value = `${hh}:${mm}`;
-        } else if (val.length === 2) {
-            if (parseInt(val, 10) > 23) val = '23';
-            e.target.value = `${val}:`;
         } else {
-            e.target.value = val;
+            let digits = val.replace(/\D/g, '');
+            if (digits.length > 4) digits = digits.slice(0, 4);
+
+            if (digits.length >= 3) {
+                hh = digits.slice(0, 2);
+                mm = digits.slice(2);
+                if (parseInt(hh, 10) > 23) hh = '23';
+                if (parseInt(mm, 10) > 59) mm = '59';
+                e.target.value = `${hh}:${mm}`;
+            } else if (digits.length === 2) {
+                hh = digits;
+                if (parseInt(hh, 10) > 23) hh = '23';
+                e.target.value = `${hh}:`;
+            } else {
+                e.target.value = digits;
+            }
+        }
+
+        // Auto-select minutes if user just finished typing the 2nd digit of hours
+        if (hh && hh.length === 2 && (cursor === 2 || cursor === 3)) {
+            let finalVal = e.target.value;
+            if (finalVal.length > 3) { // There are minutes to highlight
+                setTimeout(() => {
+                    e.target.setSelectionRange(3, finalVal.length);
+                }, 0);
+            }
         }
     });
 
@@ -175,26 +202,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const resetBossBtn = document.getElementById('reset-boss-btn');
     if (resetBossBtn) {
         resetBossBtn.addEventListener('click', () => {
-            const cb = document.getElementById('reset-clear-all-cb');
-            if (cb) cb.checked = false;
-            openModal('reset-modal-step1');
+            openModal('reset-modal-step2');
         });
     }
 
-    const cbResetClearAll = document.getElementById('reset-clear-all-cb');
-    if (cbResetClearAll) {
-        cbResetClearAll.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                swalDark.fire('คำเตือน', 'เวลาตายล่าสุด และ เวลาเกิดรอบถัดไป ของบอสทุกตัวจะถูกรีเซตเป็นค่าว่างทั้งหมด!', 'warning');
-            }
-        });
-    }
-
-    const resetStep1Form = document.getElementById('reset-step1-form');
-    if (resetStep1Form) {
-        resetStep1Form.addEventListener('submit', handleConfirmStep1);
-    }
-
+    // Step 1 logic removed
+    
     const resetStep2Form = document.getElementById('reset-step2-form');
     if (resetStep2Form) {
         resetStep2Form.addEventListener('submit', handleConfirmStep2);
@@ -436,14 +449,40 @@ function showDashboard() {
     logUserAccess(); // บันทึกประวัติการเข้าใช้งานและ IP
 }
 
+let isViewerModeSimulated = false;
+
+window.toggleViewerMode = function() {
+    isViewerModeSimulated = !isViewerModeSimulated;
+    const btn = document.getElementById('toggle-viewer-mode-btn');
+    if (btn) {
+        if (isViewerModeSimulated) {
+            btn.innerHTML = '👁️ โหมดคนดู: เปิด';
+            btn.style.background = 'rgba(244, 63, 94, 0.15)';
+            btn.style.color = '#f43f5e';
+            btn.style.border = '1px solid rgba(244, 63, 94, 0.4)';
+        } else {
+            btn.innerHTML = '👁️ โหมดคนดู: ปิด';
+            btn.style.background = 'rgba(139, 92, 246, 0.15)';
+            btn.style.color = '#8b5cf6';
+            btn.style.border = '1px solid rgba(139, 92, 246, 0.4)';
+        }
+    }
+    applyRoleUI();
+};
+
 function applyRoleUI() {
     const addBtn = document.getElementById('add-boss-btn');
     const logBtn = document.getElementById('log-btn');
     const resetBtn = document.getElementById('reset-boss-btn');
     const addScheduleBtn = document.getElementById('add-schedule-btn');
     const accessLogBtn = document.getElementById('access-log-btn');
+    const toggleViewerBtn = document.getElementById('toggle-viewer-mode-btn');
 
-    if (currentUserRole === 'viewer') {
+    if (toggleViewerBtn) {
+        toggleViewerBtn.style.display = currentUserRole === 'admin' ? 'inline-block' : 'none';
+    }
+
+    if (currentUserRole === 'viewer' || (currentUserRole === 'admin' && isViewerModeSimulated)) {
         if (addBtn) addBtn.style.display = 'none';
         if (logBtn) logBtn.style.display = 'none';
         if (resetBtn) resetBtn.style.display = 'none';
@@ -506,7 +545,11 @@ function renderBosses() {
     if (invBossTableBody) invBossTableBody.innerHTML = '';
 
     // Search Filtering
-    let filteredBosses = bosses.filter(b => b.is_active);
+    const isViewer = currentUserRole === 'viewer' || (currentUserRole === 'admin' && isViewerModeSimulated);
+    let filteredBosses = bosses.filter(b => {
+        if (isViewer) return b.is_active;
+        return true;
+    });
     if (searchQuery) {
         filteredBosses = filteredBosses.filter(b =>
             (b.name && b.name.toLowerCase().includes(searchQuery))
@@ -566,13 +609,17 @@ function createBossRow(boss, index) {
     const isInHour = nextSpawnTime >= startOfHour.getTime() && nextSpawnTime < startOfNextHour.getTime();
     tr.className = `boss-row${isInHour ? ' in-hour-highlight' : ''}`;
 
-    const lastDeathTimeStr = boss.last_death_time ? formatHHmm(boss.last_death_time) : '--:--';
-    const updatedDateStr = boss.last_death_time ? formatDate(boss.last_death_time) : '-';
+    const lastDeathTimeStr = (boss.last_death_time && boss.is_active) ? formatHHmm(boss.last_death_time) : '--:--';
+    const updatedDateStr = (boss.last_death_time && boss.is_active) ? formatDate(boss.last_death_time) : '-';
 
     // Parse Name (Thai / English)
     const nameParts = (boss.name || '').split('/');
-    const nameThai = nameParts[0] ? nameParts[0].trim() : boss.name;
+    let nameThai = nameParts[0] ? nameParts[0].trim() : boss.name;
     const nameEn = nameParts[1] ? nameParts[1].trim() : '';
+
+    if (!boss.is_active) {
+        nameThai += ' <span style="font-size: 0.75rem; color: #facc15; background: rgba(250, 204, 21, 0.15); padding: 2px 6px; border-radius: 4px; margin-left: 4px;">🚫 ซ่อน</span>';
+    }
 
     // Calculate Cooldown in Hours
     const respawnMins = boss.regular_respawn_mins || 0;
@@ -584,7 +631,9 @@ function createBossRow(boss, index) {
     // Spawn Pill Format
     let spawnPillHTML = '';
 
-    if (nextSpawnTime > 0 && nextSpawnTime <= now) {
+    if (!boss.is_active) {
+        spawnPillHTML = `<span class="spawn-pill" id="countdown-${boss.id}" style="font-size: 1rem; padding: 4px 10px; font-weight: bold; font-family: monospace; background: rgba(255,255,255,0.1); color: #94a3b8;">--:--</span>`;
+    } else if (nextSpawnTime > 0 && nextSpawnTime <= now) {
         spawnPillHTML = `<span class="spawn-pill spawned-pill" id="countdown-${boss.id}" style="font-size: 0.95rem; padding: 4px 10px; font-weight: bold;">⚡ SPAWNED</span>`;
     } else {
         spawnPillHTML = `<span class="spawn-pill blue-pill" id="countdown-${boss.id}" style="font-size: 1rem; padding: 4px 10px; font-weight: bold; font-family: monospace;">⏱️ ${formatHHmm(boss.next_spawn_time)}</span>`;
@@ -608,7 +657,7 @@ function createBossRow(boss, index) {
             </div>
         </td>
         <td style="text-align:center;"><span class="cd-badge">${respawnHours}</span></td>
-        <td style="text-align:center;">
+        <td class="col-action" style="text-align:center;">
             <div class="action-cell">
                 <button class="btn action-dead" onclick="openDeadModal('${boss.id}')">ตาย</button>
                 <button class="btn action-skip" onclick="skipSpawn('${boss.id}')">ไม่เกิด</button>
@@ -878,21 +927,26 @@ function updateSpawnPreview() {
 
         // Check if boss is Invasion & next spawn is past midnight of death date
         const bossId = document.getElementById('dead-boss-id').value;
-        const currentBoss = bosses.find(b => b.id === bossId);
+        const currentBoss = bosses.find(b => b.id == bossId);
         const noTimeBtn = document.getElementById('btn-no-time-dead');
+        const midnightWarning = document.getElementById('dead-midnight-warning');
 
         const deathDateEndMs = Date.UTC(y, m - 1, d, 23, 59, 59, 999) - (7 * 3600 * 1000);
         const isPastMidnight = nextSpawnMs > deathDateEndMs;
 
         if (currentBoss && currentBoss.server_type === 'invasion' && isPastMidnight) {
             if (noTimeBtn) noTimeBtn.style.display = 'inline-block';
+            if (midnightWarning) midnightWarning.style.display = 'block';
         } else {
             if (noTimeBtn) noTimeBtn.style.display = 'none';
+            if (midnightWarning) midnightWarning.style.display = 'none';
         }
     } else {
         previewEl.textContent = '';
         const noTimeBtn = document.getElementById('btn-no-time-dead');
+        const midnightWarning = document.getElementById('dead-midnight-warning');
         if (noTimeBtn) noTimeBtn.style.display = 'none';
+        if (midnightWarning) midnightWarning.style.display = 'none';
     }
 }
 
@@ -905,7 +959,8 @@ window.handleNoTimeDeath = async function () {
     const payload = {
         last_death_time: null,
         next_spawn_time: null,
-        use_first_spawn: false
+        use_first_spawn: false,
+        is_active: true
     };
 
     const { error } = await supabaseClient.from('bosses').update(payload).eq('id', id);
@@ -1111,7 +1166,8 @@ async function handleConfirmDeath(e) {
     const payload = {
         last_death_time: trueDeathDate.toISOString(),
         next_spawn_time: nextSpawnDate.toISOString(),
-        use_first_spawn: false
+        use_first_spawn: false,
+        is_active: true
     };
 
     const { error } = await supabaseClient.from('bosses').update(payload).eq('id', id);
@@ -1432,6 +1488,8 @@ window.handleConfirmStep2 = async function (e) {
     
     if (scope === 'home') {
         targetBosses = targetBosses.filter(b => b.server_type !== 'invasion');
+    } else if (scope === 'invasion') {
+        targetBosses = targetBosses.filter(b => b.server_type === 'invasion');
     }
     
     if (targetBosses.length === 0) {
@@ -2010,3 +2068,69 @@ window.deleteScheduleEvent = async function () {
         }
     }
 }
+
+// --- Reset Boss Time per Server ---
+window.promptResetTime = async function (serverType) {
+    if (currentUserRole !== 'admin') {
+        swalDark.fire('สิทธิ์ไม่เพียงพอ', 'เฉพาะแอดมินหรือสมาชิกแคลนเท่านั้นที่สามารถรีเซตเวลาบอสได้', 'error');
+        return;
+    }
+
+    const serverNameStr = serverType === 'home' ? 'เซิร์ฟเวอร์เรา (Home)' : 'เซิร์ฟศัตรู (Invasion)';
+    const configKey = serverType === 'home' ? 'reset_password_home' : 'reset_password_invasion';
+
+    const { value: password } = await swalDark.fire({
+        title: `รีเซตเวลาบอส ${serverNameStr}`,
+        text: 'กรุณาใส่รหัสผ่านเพื่อยืนยันการรีเซตเวลาบอส (ทำให้เวลาตายและเวลาเกิดเป็นค่าว่าง)',
+        input: 'password',
+        inputPlaceholder: 'รหัสผ่าน',
+        showCancelButton: true,
+        confirmButtonText: 'ยืนยัน',
+        cancelButtonText: 'ยกเลิก',
+        preConfirm: (pwd) => {
+            if (!pwd) {
+                Swal.showValidationMessage('กรุณากรอกรหัสผ่าน');
+            }
+            return pwd;
+        }
+    });
+
+    if (password) {
+        try {
+            // Check password from database
+            const { data: configData, error: configError } = await supabaseClient
+                .from('system_config')
+                .select('config_value')
+                .eq('config_name', configKey)
+                .single();
+
+            if (configError || !configData) {
+                swalDark.fire('เกิดข้อผิดพลาด', 'ไม่พบการตั้งค่ารหัสผ่านในระบบ กรุณาตรวจสอบฐานข้อมูล', 'error');
+                return;
+            }
+
+            if (password !== configData.config_value) {
+                swalDark.fire('รหัสผ่านไม่ถูกต้อง', 'กรุณาลองใหม่อีกครั้ง', 'error');
+                return;
+            }
+
+            // Correct password, proceed to reset
+            const { error: updateError } = await supabaseClient
+                .from('bosses')
+                .update({ last_death_time: null, next_spawn_time: null })
+                .eq('server_type', serverType);
+
+            if (updateError) {
+                swalDark.fire('เกิดข้อผิดพลาด', 'ไม่สามารถรีเซตเวลาบอสได้: ' + updateError.message, 'error');
+            } else {
+                addLog('reset_world', 'All Bosses', `ล้างเวลาบอสทั้งหมดใน ${serverNameStr}`, serverType);
+                swalDark.fire('สำเร็จ', 'รีเซตเวลาบอสเรียบร้อยแล้ว', 'success');
+                // Realtime listener should pick up the changes, but we fetch manually just in case
+                fetchBosses();
+            }
+        } catch (err) {
+            console.error('Reset error:', err);
+            swalDark.fire('เกิดข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้', 'error');
+        }
+    }
+};

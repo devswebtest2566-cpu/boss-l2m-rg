@@ -33,6 +33,9 @@
                         title="เปิด/ปิด เสียงเตือนเมื่อบอสเกิด"
                         style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4);">🔔
                         เสียง: เปิด</button>
+                    <button id="toggle-viewer-mode-btn" class="btn secondary" onclick="toggleViewerMode()"
+                        title="จำลองมุมมองคนดูทั่วไป"
+                        style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6; border: 1px solid rgba(139, 92, 246, 0.4); display: none;">👁️ โหมดคนดู: ปิด</button>
                     <button id="log-btn" class="btn secondary" onclick="openLogModal()" title="ประวัติการแก้ไข">📜
                         ประวัติ</button>
                     <button id="access-log-btn" class="btn logout-icon-btn" onclick="openAccessLogModal()"
@@ -88,8 +91,10 @@
             <div class="split-view-container" id="split-view-container">
                 <div class="boss-table-container" id="home-table-container">
                     <h2 class="table-title" id="home-title"
-                        style="display: none; color: #fff; text-align: center; font-size: 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding: 1.25rem 1rem; margin: 0; background: rgba(0,0,0,0.2);">
-                        🛡️ เซิร์ฟเวอร์เรา (Home)</h2>
+                        style="color: #fff; text-align: center; font-size: 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding: 1.25rem 1rem; margin: 0; background: rgba(0,0,0,0.2); position: relative;">
+                        🛡️ เซิร์ฟเวอร์เรา (Home)
+                        <button class="btn secondary action-cell" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); font-size: 0.85rem; padding: 5px 12px;" onclick="promptResetTime('home')">🔄 รีเซตเวลาบอส</button>
+                    </h2>
                     <table class="boss-table">
                         <thead>
                             <tr>
@@ -108,8 +113,10 @@
 
                 <div class="boss-table-container" id="inv-table-container" style="display: none;">
                     <h2 class="table-title"
-                        style="color: #ef4444; text-align: center; font-size: 1.1rem; border-bottom: 1px solid rgba(239,68,68,0.2); padding: 1.25rem 1rem; margin: 0; background: rgba(0,0,0,0.2);">
-                        ⚔️ เซิร์ฟศัตรู (Invasion)</h2>
+                        style="color: #ef4444; text-align: center; font-size: 1.1rem; border-bottom: 1px solid rgba(239,68,68,0.2); padding: 1.25rem 1rem; margin: 0; background: rgba(0,0,0,0.2); position: relative;">
+                        ⚔️ เซิร์ฟศัตรู (Invasion)
+                        <button class="btn action-cell" style="background: #ef4444; color: #fff; position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); font-size: 0.85rem; padding: 5px 12px;" onclick="promptResetTime('invasion')">🔄 รีเซตเวลาบอส</button>
+                    </h2>
                     <table class="boss-table invasion-table">
                         <thead>
                             <tr>
@@ -247,12 +254,15 @@
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <input type="date" id="dead-date" required
                             style="flex: 1; min-width: 120px; padding: 1rem; font-size: 1.1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.5); color: #fff; color-scheme: dark; text-align: center; letter-spacing: 1px;">
-                        <input type="text" id="dead-time" placeholder="HH:mm" pattern="^([01]?[0-9]|2[0-3]):[0-5][0-9]$"
-                            required
+                        <input type="text" id="dead-time" placeholder="HH:mm" pattern="^([01]?[0-9]|2[0-3]):[0-5][0-9]$" required
                             style="flex: 1; min-width: 100px; padding: 1rem; font-size: 1.1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.5); color: #fff; text-align: center; letter-spacing: 2px;">
                     </div>
                     <div id="dead-spawn-preview"
                         style="color: var(--accent-cyan); font-size: 0.85rem; margin-top: 8px; text-align: center; min-height: 1.2rem;">
+                    </div>
+                    <div id="dead-midnight-warning"
+                        style="color: #facc15; font-size: 0.85rem; margin-top: 5px; text-align: center; display: none;">
+                        ⚠️ เวลาเกิดเกินเที่ยงคืน จะใส่เวลาหรือไม่ระบุเวลาก็ได้
                     </div>
                 </div>
                 <div class="modal-actions">
@@ -288,8 +298,7 @@
 
                 <div class="form-group">
                     <label>เวลา (Time แบบ 24 ชม.)</label>
-                    <input type="text" id="schedule-time" placeholder="HH:mm" pattern="^([01]?[0-9]|2[0-3]):[0-5][0-9]$"
-                        required
+                    <input type="text" id="schedule-time" placeholder="HH:mm" pattern="^([01]?[0-9]|2[0-3]):[0-5][0-9]$" required
                         style="padding: 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 1.1rem; letter-spacing: 2px; text-align: center;">
                 </div>
 
@@ -316,30 +325,12 @@
         </div>
     </div>
 
-    <!-- Reset Server Maintenance Modal - Step 1 -->
-    <div id="reset-modal-step1" class="modal">
-        <div class="modal-content" style="max-width: 500px; width: 90%;">
-            <h2 style="margin-top:0; color: #facc15; text-align: center;">🔄 รีเซ็ตเวลาบอส (ขั้นตอนที่ 1)</h2>
-            <form id="reset-step1-form">
-                <div class="form-group" style="margin-bottom: 1.5rem; background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
-                    <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; color: #fff; font-size: 1.1rem;">
-                        <input type="checkbox" id="reset-clear-all-cb" style="width: 20px; height: 20px;">
-                        รีเซตเวลาตายล่าสุด บอสทั้งหมดเป็นค่าว่าง
-                    </label>
-                </div>
-                
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-cancel" onclick="closeModal('reset-modal-step1')">ยกเลิก</button>
-                    <button type="submit" class="btn secondary">ถัดไป / ยืนยัน</button>
-                </div>
-            </form>
-        </div>
-    </div>
+    <!-- Removed Step 1 Modal -->
 
     <!-- Reset Server Maintenance Modal - Step 2 -->
     <div id="reset-modal-step2" class="modal">
         <div class="modal-content" style="max-width: 500px; width: 90%;">
-            <h2 style="margin-top:0; color: #facc15; text-align: center;">🔄 กำหนดเวลาเปิดเซิฟเวอร์ (ขั้นตอนที่ 2)</h2>
+            <h2 style="margin-top:0; color: #facc15; text-align: center;">🔄 กำหนดเวลาเปิดเซิฟเวอร์</h2>
             <form id="reset-step2-form">
                 <div class="form-group" style="margin-bottom: 1.5rem;">
                     <label style="color: var(--accent-gold); font-weight: 600; display: block; margin-bottom: 6px; text-align: center;">⚙️ เวลาเปิดเซิฟจริง (Actual Server Open Time)</label>
@@ -356,6 +347,7 @@
                         style="padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.8); color: #fff; font-size: 1rem; width: 100%;">
                         <option value="all">🌐 บอสทั้งหมด (ทั้งสองโลก)</option>
                         <option value="home">🛡️ เฉพาะโลกเรา (Home เท่านั้น)</option>
+                        <option value="invasion">⚔️ เฉพาะเซิร์ฟศัตรู (Invasion เท่านั้น)</option>
                     </select>
                 </div>
 
