@@ -201,8 +201,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const resetBossBtn = document.getElementById('reset-boss-btn');
     if (resetBossBtn) {
-        resetBossBtn.addEventListener('click', () => {
-            openModal('reset-modal-step2');
+        resetBossBtn.addEventListener('click', async () => {
+            if (currentUserRole !== 'admin') {
+                swalDark.fire('สิทธิ์ไม่เพียงพอ', 'เฉพาะแอดมินเท่านั้นที่สามารถใช้งานได้', 'error');
+                return;
+            }
+
+            const { value: password } = await swalDark.fire({
+                title: 'กำหนดเวลาเปิดเซิฟเวอร์',
+                text: 'กรุณาใส่รหัสผ่านเพื่อยืนยันการตั้งเวลาเปิดเซิฟเวอร์',
+                input: 'password',
+                inputPlaceholder: 'รหัสผ่าน',
+                showCancelButton: true,
+                confirmButtonText: 'ยืนยัน',
+                cancelButtonText: 'ยกเลิก',
+                preConfirm: (pwd) => {
+                    if (!pwd) {
+                        Swal.showValidationMessage('กรุณากรอกรหัสผ่าน');
+                    }
+                    return pwd;
+                }
+            });
+
+            if (password) {
+                try {
+                    const { data: configData, error: configError } = await supabaseClient
+                        .from('system_config')
+                        .select('config_value')
+                        .eq('config_name', 'reset_password_open_server')
+                        .single();
+
+                    if (configError || !configData) {
+                        swalDark.fire('เกิดข้อผิดพลาด', 'ไม่พบการตั้งค่ารหัสผ่านในระบบ กรุณาตรวจสอบฐานข้อมูล', 'error');
+                        return;
+                    }
+
+                    if (password !== configData.config_value) {
+                        swalDark.fire('รหัสผ่านไม่ถูกต้อง', 'กรุณาลองใหม่อีกครั้ง', 'error');
+                        return;
+                    }
+
+                    openModal('reset-modal-step2');
+                } catch (err) {
+                    console.error('Password check error:', err);
+                    swalDark.fire('เกิดข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้', 'error');
+                }
+            }
         });
     }
 
