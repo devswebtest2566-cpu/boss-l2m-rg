@@ -2134,3 +2134,134 @@ window.promptResetTime = async function (serverType) {
         }
     }
 };
+
+// --- Screenshot Mode ---
+window.openScreenshotModal = function() {
+    const content = document.getElementById('screenshot-content');
+    if (!content) return;
+    content.innerHTML = '';
+
+    // Get active bosses
+    const activeBosses = bosses.filter(b => b.is_active);
+
+    // Sort by next spawn time
+    activeBosses.sort((a, b) => {
+        const timeA = a.next_spawn_time ? new Date(a.next_spawn_time).getTime() : Infinity;
+        const timeB = b.next_spawn_time ? new Date(b.next_spawn_time).getTime() : Infinity;
+        return timeA - timeB;
+    });
+
+    const homeBosses = activeBosses.filter(b => b.server_type !== 'invasion');
+    const invBosses = activeBosses.filter(b => b.server_type === 'invasion');
+
+    // Create sections (Home is expanded by default, Invasion is collapsed)
+    const sections = [];
+    
+    if (homeBosses.length > 0) {
+        const homeSection = createScreenshotSection('🛡️ เซิร์ฟเวอร์เรา (Home)', '#0ea5e9', homeBosses, true, sections);
+        sections.push(homeSection);
+        content.appendChild(homeSection.element);
+    }
+    
+    if (invBosses.length > 0) {
+        const invSection = createScreenshotSection('⚔️ เซิร์ฟศัตรู (Invasion)', '#ef4444', invBosses, false, sections);
+        sections.push(invSection);
+        content.appendChild(invSection.element);
+    }
+
+    if (homeBosses.length === 0 && invBosses.length === 0) {
+        content.innerHTML = '<div style="text-align:center; padding: 20px; color: #94a3b8;">ไม่มีบอสที่เปิดใช้งานอยู่</div>';
+    }
+
+    openModal('screenshot-modal');
+};
+
+function createScreenshotSection(title, color, bossList, isExpanded, allSections) {
+    const section = document.createElement('div');
+    section.style.marginBottom = '15px';
+    
+    const header = document.createElement('div');
+    header.className = 'screenshot-section-title';
+    header.style.color = color;
+    header.style.backgroundColor = color.replace(')', ', 0.15)').replace('rgb', 'rgba'); 
+    header.style.cursor = 'pointer';
+    header.style.display = 'flex';
+    header.style.justifyContent = 'space-between';
+    header.style.alignItems = 'center';
+    header.style.padding = '10px 15px';
+    header.style.borderRadius = '8px';
+    header.style.userSelect = 'none';
+
+    if (color.startsWith('#')) {
+        header.style.backgroundColor = color + '20'; 
+    }
+    
+    const titleText = document.createElement('span');
+    titleText.textContent = title;
+    
+    const toggleIcon = document.createElement('span');
+    toggleIcon.textContent = isExpanded ? '▼' : '▶';
+    toggleIcon.style.fontSize = '0.8rem';
+    
+    header.appendChild(titleText);
+    header.appendChild(toggleIcon);
+    
+    const grid = document.createElement('div');
+    grid.className = 'screenshot-grid';
+    grid.style.marginTop = '15px';
+    grid.style.display = isExpanded ? 'grid' : 'none';
+
+    const now = getNow();
+
+    bossList.forEach(boss => {
+        const item = document.createElement('div');
+        item.className = 'screenshot-item';
+
+        const nameParts = (boss.name || '').split('/');
+        const nameThai = nameParts[0] ? nameParts[0].trim() : boss.name;
+
+        let timeHtml = '';
+        if (!boss.next_spawn_time) {
+            timeHtml = '<span class="boss-time" style="color: #94a3b8;">--:--</span>';
+        } else {
+            const nextTime = new Date(boss.next_spawn_time).getTime();
+            if (nextTime <= now) {
+                timeHtml = '<span class="boss-time" style="color: #facc15; font-weight: bold;">⚡ SPAWNED</span>';
+            } else {
+                timeHtml = `<span class="boss-time" style="color: #00f2fe;">⏱️ ${formatHHmm(boss.next_spawn_time)}</span>`;
+            }
+        }
+
+        item.innerHTML = `
+            <span class="boss-name">${nameThai}</span>
+            ${timeHtml}
+        `;
+        grid.appendChild(item);
+    });
+
+    const sectionObj = {
+        element: section,
+        collapse: function() {
+            grid.style.display = 'none';
+            toggleIcon.textContent = '▶';
+        },
+        expand: function() {
+            grid.style.display = 'grid';
+            toggleIcon.textContent = '▼';
+        }
+    };
+
+    header.onclick = function() {
+        if (grid.style.display === 'none') {
+            // Close all others first
+            allSections.forEach(s => s.collapse());
+            sectionObj.expand();
+        } else {
+            sectionObj.collapse();
+        }
+    };
+
+    section.appendChild(header);
+    section.appendChild(grid);
+    return sectionObj;
+}
