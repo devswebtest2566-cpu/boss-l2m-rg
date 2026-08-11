@@ -434,26 +434,34 @@
     <style>
         .screenshot-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 10px;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
         }
         .screenshot-item {
             background: rgba(0, 0, 0, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 8px;
-            padding: 10px 15px;
+            padding: 12px 15px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 15px;
+            height: 100%;
         }
         .screenshot-item .boss-name {
             font-weight: 500;
             color: #e2e8f0;
-            font-size: 1rem;
+            font-size: 0.95rem;
+            line-height: 1.3;
+            flex-grow: 1;
+            word-break: break-word;
         }
         .screenshot-item .boss-time {
             font-family: monospace;
             font-size: 1.05rem;
+            flex-shrink: 0;
+            white-space: nowrap;
+            text-align: right;
         }
         .screenshot-section-title {
             font-size: 1.1rem;
