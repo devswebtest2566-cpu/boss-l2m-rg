@@ -600,8 +600,11 @@ function renderBosses() {
         );
     }
 
-    // Sort Ascending by next_spawn_time (earliest first, nulls at bottom)
+    // Sort Ascending by next_spawn_time (earliest first, nulls at bottom, inactive at very bottom)
     filteredBosses.sort((a, b) => {
+        if (a.is_active !== b.is_active) {
+            return a.is_active ? -1 : 1;
+        }
         const timeA = a.next_spawn_time ? new Date(a.next_spawn_time).getTime() : Infinity;
         const timeB = b.next_spawn_time ? new Date(b.next_spawn_time).getTime() : Infinity;
         return timeA - timeB;
@@ -1045,7 +1048,7 @@ window.openDeadModal = async function (id) {
         }
     }
 
-    currentDeadBossCooldown = boss.use_first_spawn ? (boss.first_spawn_mins || 0) : (boss.regular_respawn_mins || 0);
+    currentDeadBossCooldown = boss.regular_respawn_mins || 0;
 
     document.getElementById('dead-boss-id').value = id;
     document.getElementById('dead-boss-name').textContent = nameThai;
@@ -1204,7 +1207,7 @@ async function handleConfirmDeath(e) {
     const trueUTCDeathMs = deathThaiMs - (7 * 3600 * 1000);
     const trueDeathDate = new Date(trueUTCDeathMs);
 
-    const minsToAdd = boss.use_first_spawn ? (boss.first_spawn_mins || 0) : (boss.regular_respawn_mins || 0);
+    const minsToAdd = boss.regular_respawn_mins || 0;
     const nextSpawnDate = new Date(trueDeathDate.getTime() + (minsToAdd * 60000));
 
     const payload = {
