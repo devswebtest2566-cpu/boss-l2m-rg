@@ -365,9 +365,14 @@
     <!-- Log History Modal -->
     <div id="log-modal" class="modal">
         <div class="modal-content" style="max-width: 1200px; width: 95%;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 10px;">
                 <h2 style="margin:0;">📜 ประวัติการแก้ไข</h2>
-                <button class="btn secondary" onclick="closeModal('log-modal')" style="padding: 4px 10px;">X</button>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button id="btn-cleanup-logs" class="btn" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; font-size: 0.8rem; padding: 6px 12px; border-radius: 6px; cursor: pointer; display: none;" onclick="cleanupOldLogs()">
+                        🧹 ลบประวัติเก่า (เก็บ 2 วันล่าสุด)
+                    </button>
+                    <button class="btn secondary" onclick="closeModal('log-modal')" style="padding: 4px 10px;">X</button>
+                </div>
             </div>
             <div class="log-table-container" style="max-height: 400px; overflow-y: auto;">
                 <table class="boss-table">

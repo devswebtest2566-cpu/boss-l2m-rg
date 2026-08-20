@@ -1394,6 +1394,18 @@ window.deleteBoss = async function () {
 
 window.openLogModal = async function () {
     openModal('log-modal');
+    
+    // แสดง/ซ่อนปุ่มลบประวัติตามสิทธิ์แอดมิน
+    const cleanupBtn = document.getElementById('btn-cleanup-logs');
+    if (cleanupBtn) {
+        const isViewer = currentUserRole === 'viewer' || (currentUserRole === 'admin' && isViewerModeSimulated);
+        cleanupBtn.style.display = isViewer ? 'none' : 'inline-block';
+    }
+
+    await loadBossLogs();
+};
+
+async function loadBossLogs() {
     document.getElementById('log-table-body').innerHTML = '<tr><td colspan="4" style="text-align:center;">กำลังโหลดข้อมูล...</td></tr>';
 
     if (!supabaseClient) return;
@@ -1454,6 +1466,64 @@ window.openLogModal = async function () {
     });
     document.getElementById('log-table-body').innerHTML = html;
 }
+
+window.cleanupOldLogs = async function () {
+    if (!supabaseClient) return;
+
+    if (currentUserRole !== 'admin' || isViewerModeSimulated) {
+        swalDark.fire('สิทธิ์ไม่เพียงพอ', 'เฉพาะแอดมินเท่านั้นที่สามารถลบประวัติได้', 'error');
+        return;
+    }
+
+    // คำนวณเวลาย้อนหลัง 2 วัน (48 ชั่วโมง)
+    const cutoffTime = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    const cutoffThai = new Date(cutoffTime.getTime() + (7 * 3600 * 1000));
+    const day = String(cutoffThai.getUTCDate()).padStart(2, '0');
+    const month = String(cutoffThai.getUTCMonth() + 1).padStart(2, '0');
+    const hours = String(cutoffThai.getUTCHours()).padStart(2, '0');
+    const mins = String(cutoffThai.getUTCMinutes()).padStart(2, '0');
+    const formattedCutoff = `${day}/${month} ${hours}:${mins}`;
+
+    const result = await swalDark.fire({
+        title: 'ยืนยันการลบประวัติเก่า',
+        html: `ต้องการลบประวัติการเปลี่ยนเวลาบอสที่เก่ากว่า 2 วัน ทั้งหมดหรือไม่?<br><span style="font-size:0.85rem; color:#94a3b8;">(ระบบจะเก็บประวัติตั้งแต่ ${formattedCutoff} เป็นต้นมาไว้)</span>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'ยืนยันการลบ',
+        cancelButtonText: 'ยกเลิก',
+        customClass: { confirmButton: 'btn action-dead', cancelButton: 'btn btn-cancel' }
+    });
+
+    if (!result.isConfirmed) return;
+
+    swalDark.fire({
+        title: 'กำลังลบประวัติ...',
+        allowOutsideClick: false,
+        didOpen: () => swalDark.showLoading()
+    });
+
+    try {
+        const { error } = await supabaseClient
+            .from('boss_logs')
+            .delete()
+            .lt('created_at', cutoffTime.toISOString());
+
+        if (error) {
+            swalDark.fire('เกิดข้อผิดพลาด', error.message || 'ไม่สามารถลบประวัติได้', 'error');
+        } else {
+            await swalDark.fire({
+                title: 'สำเร็จ',
+                text: 'ลบประวัติเก่าเรียบร้อยแล้ว (เก็บ 2 วันล่าสุดไว้)',
+                icon: 'success',
+                timer: 1500,
+                showConfirmButton: false
+            });
+            await loadBossLogs();
+        }
+    } catch (err) {
+        swalDark.fire('เกิดข้อผิดพลาด', err.message || 'เกิดข้อผิดพลาดในการลบข้อมูล', 'error');
+    }
+};
 
 // --- New Time Reset System ---
 
