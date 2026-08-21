@@ -9,10 +9,250 @@ if (SUPABASE_URL !== 'YOUR_SUPABASE_URL_HERE') {
 
 let currentUserRole = 'viewer';
 
-// --- Global Variables ---
-let timeOffset = 0;
+// --- Time Synchronization System ---
+let serverTimeOffset = 0;
+let customTimeOffsetSec = parseInt(localStorage.getItem('customTimeOffsetSec') || '0', 10);
+if (isNaN(customTimeOffsetSec)) customTimeOffsetSec = 0;
+
+let timeSyncStatus = {
+    synced: false,
+    provider: 'ยังไม่ได้ซิงค์',
+    lastSyncTime: null,
+    latencyMs: 0,
+    offsetMs: 0
+};
+
 function getNow() {
-    return Date.now() + timeOffset;
+    return Date.now() + serverTimeOffset + (customTimeOffsetSec * 1000);
+}
+
+// Multi-provider time sync with network latency compensation (RTT / 2)
+async function syncTimeWithServer(showFeedback = false) {
+    const providers = [
+        {
+            name: 'TimeAPI (UTC)',
+            fetchFn: async () => {
+                const t0 = Date.now();
+                const res = await fetch('https://timeapi.io/api/time/current/zone?timeZone=UTC', {
+                    cache: 'no-store',
+                    signal: AbortSignal.timeout(4000)
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                const t1 = Date.now();
+                const rtt = t1 - t0;
+                const latency = rtt / 2;
+                const serverUtcMs = new Date(data.dateTime + 'Z').getTime();
+                return {
+                    offset: (serverUtcMs + latency) - t1,
+                    latency: rtt
+                };
+            }
+        },
+        {
+            name: 'TimeAPI (Bangkok)',
+            fetchFn: async () => {
+                const t0 = Date.now();
+                const res = await fetch('https://timeapi.io/api/time/current/zone?timeZone=Asia/Bangkok', {
+                    cache: 'no-store',
+                    signal: AbortSignal.timeout(4000)
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                const t1 = Date.now();
+                const rtt = t1 - t0;
+                const latency = rtt / 2;
+                const localMs = new Date(data.dateTime + 'Z').getTime() - (7 * 3600 * 1000);
+                return {
+                    offset: (localMs + latency) - t1,
+                    latency: rtt
+                };
+            }
+        },
+        {
+            name: 'WorldTimeAPI',
+            fetchFn: async () => {
+                const t0 = Date.now();
+                const res = await fetch('https://worldtimeapi.org/api/timezone/Asia/Bangkok', {
+                    cache: 'no-store',
+                    signal: AbortSignal.timeout(4000)
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                const t1 = Date.now();
+                const rtt = t1 - t0;
+                const latency = rtt / 2;
+                const serverUtcMs = new Date(data.utc_datetime).getTime();
+                return {
+                    offset: (serverUtcMs + latency) - t1,
+                    latency: rtt
+                };
+            }
+        }
+    ];
+
+    let success = false;
+    for (const provider of providers) {
+        try {
+            const result = await provider.fetchFn();
+            serverTimeOffset = result.offset;
+            timeSyncStatus = {
+                synced: true,
+                provider: provider.name,
+                lastSyncTime: new Date(),
+                latencyMs: Math.round(result.latency),
+                offsetMs: Math.round(result.offset)
+            };
+            success = true;
+            console.log(`[TimeSync] Synced with ${provider.name}. Offset: ${result.offset.toFixed(1)}ms, RTT: ${result.latency.toFixed(1)}ms`);
+            break;
+        } catch (err) {
+            console.warn(`[TimeSync] Provider ${provider.name} failed:`, err.message);
+        }
+    }
+
+    if (!success && !timeSyncStatus.synced) {
+        console.warn('[TimeSync] All remote time providers failed. Falling back to local device time.');
+        timeSyncStatus.provider = 'เวลาเครื่องผู้ใช้ (Local Device)';
+    }
+
+    if (showFeedback) {
+        if (success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'ซิงค์เวลาสำเร็จ!',
+                html: `<div style="text-align: left; font-size: 0.9rem; line-height: 1.6;">
+                    <p>🌐 <b>เซิร์ฟเวอร์:</b> ${timeSyncStatus.provider}</p>
+                    <p>⚡ <b>ความเร็วเน็ต (Ping):</b> ${timeSyncStatus.latencyMs} ms</p>
+                    <p>⏱️ <b>ชดเชยเวลาเน็ต:</b> ${(timeSyncStatus.offsetMs / 1000).toFixed(2)} วินาที</p>
+                </div>`,
+                timer: 2000,
+                showConfirmButton: false,
+                background: 'rgba(18, 22, 35, 0.95)',
+                color: '#f8fafc'
+            });
+        } else {
+            Swal.fire({
+                icon: 'warning',
+                title: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์เวลาได้',
+                text: 'ระบบจะใช้เวลาจากนาฬิกาของเครื่องคอมพิวเตอร์ของคุณแทนชั่วคราว',
+                background: 'rgba(18, 22, 35, 0.95)',
+                color: '#f8fafc'
+            });
+        }
+    }
+}
+
+// Modal for time calibration and settings
+window.openTimeSyncModal = function () {
+    const formatOffsetSec = (sec) => {
+        if (sec > 0) return `+${sec} วินาที`;
+        if (sec < 0) return `${sec} วินาที`;
+        return '0 วินาที (เวลามาตรฐาน)';
+    };
+
+    const statusBadge = timeSyncStatus.synced
+        ? `<span style="color: #10b981; font-weight: bold;">🟢 ซิงค์แล้ว (${timeSyncStatus.provider} • Ping ${timeSyncStatus.latencyMs}ms)</span>`
+        : `<span style="color: #f59e0b; font-weight: bold;">⚠️ ใช้นาฬิกาเครื่องคอมฯ (ยังไม่ซิงค์)</span>`;
+
+    const htmlContent = `
+        <div style="text-align: left; font-size: 0.92rem;">
+            <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.1);">
+                <div style="margin-bottom: 6px;"><b>สถานะเซิร์ฟเวอร์เวลา:</b><br>${statusBadge}</div>
+                <div style="font-size: 0.85rem; color: #94a3b8;">
+                    ซิงค์ล่าสุด: ${timeSyncStatus.lastSyncTime ? timeSyncStatus.lastSyncTime.toLocaleTimeString('th-TH') : 'ยังไม่เคยซิงค์'}
+                </div>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 6px; color: #00f2fe;">
+                    ⏱️ ปรับจูนเวลาชดเชยกับตัวเกม (Offset):
+                </label>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 6px;">
+                    <span style="font-size: 0.85rem; color: #cbd5e1;">ค่าปรับจูนปัจจุบัน:</span>
+                    <span id="modal-current-offset-display" style="font-weight: bold; color: #38bdf8; font-family: monospace; font-size: 1.05rem;">
+                        ${formatOffsetSec(customTimeOffsetSec)}
+                    </span>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 12px;">
+                    <button type="button" class="btn" style="background: rgba(239,68,68,0.2); border: 1px solid #ef4444; color: #ef4444; padding: 6px 0; justify-content: center;" onclick="adjustCustomOffset(-5)">-5s</button>
+                    <button type="button" class="btn" style="background: rgba(239,68,68,0.2); border: 1px solid #ef4444; color: #ef4444; padding: 6px 0; justify-content: center;" onclick="adjustCustomOffset(-1)">-1s</button>
+                    <button type="button" class="btn" style="background: rgba(148,163,184,0.2); border: 1px solid #94a3b8; color: #e2e8f0; padding: 6px 0; justify-content: center;" onclick="setCustomOffset(0)">0s</button>
+                    <button type="button" class="btn" style="background: rgba(16,185,129,0.2); border: 1px solid #10b981; color: #10b981; padding: 6px 0; justify-content: center;" onclick="adjustCustomOffset(1)">+1s</button>
+                    <button type="button" class="btn" style="background: rgba(16,185,129,0.2); border: 1px solid #10b981; color: #10b981; padding: 6px 0; justify-content: center;" onclick="adjustCustomOffset(5)">+5s</button>
+                </div>
+
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="number" id="manual-offset-input" value="${customTimeOffsetSec}" 
+                        style="width: 100%; background: #0f172a; border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px; border-radius: 6px; text-align: center; font-size: 1rem;" 
+                        placeholder="ระบุตัวเลขวินาที เช่น -2 หรือ 3">
+                    <button type="button" class="btn secondary" style="white-space: nowrap; padding: 8px 14px;" onclick="applyManualOffsetInput()">ตั้งค่า</button>
+                </div>
+                <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 6px; line-height: 1.4;">
+                    💡 <i>หากเว็บเดินเร็วกว่าในเกม ให้กดลบ (-) | หากเว็บเดินช้ากว่า ให้กดบวก (+)</i>
+                </div>
+            </div>
+
+            <div style="text-align: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
+                <button type="button" class="btn" style="background: rgba(56, 189, 248, 0.15); border: 1px solid #38bdf8; color: #38bdf8; width: 100%; padding: 10px; font-weight: bold; justify-content: center;" onclick="triggerManualSync()">
+                    🔄 ซิงค์เวลาจากเซิร์ฟเวอร์ใหม่เดี๋ยวนี้
+                </button>
+            </div>
+        </div>
+    `;
+
+    swalDark.fire({
+        title: '⚙️ ตั้งค่าและปรับจูนเวลานาฬิกา',
+        html: htmlContent,
+        showConfirmButton: true,
+        confirmButtonText: 'เสร็จสิ้น / ปิด',
+        width: '460px'
+    });
+};
+
+window.adjustCustomOffset = function (deltaSec) {
+    customTimeOffsetSec += deltaSec;
+    localStorage.setItem('customTimeOffsetSec', customTimeOffsetSec.toString());
+    updateOffsetModalDisplay();
+};
+
+window.setCustomOffset = function (valSec) {
+    customTimeOffsetSec = valSec;
+    localStorage.setItem('customTimeOffsetSec', customTimeOffsetSec.toString());
+    updateOffsetModalDisplay();
+};
+
+window.applyManualOffsetInput = function () {
+    const input = document.getElementById('manual-offset-input');
+    if (input) {
+        const val = parseInt(input.value, 10);
+        if (!isNaN(val)) {
+            customTimeOffsetSec = val;
+            localStorage.setItem('customTimeOffsetSec', customTimeOffsetSec.toString());
+            updateOffsetModalDisplay();
+        }
+    }
+};
+
+window.triggerManualSync = async function () {
+    await syncTimeWithServer(true);
+    if (document.getElementById('modal-current-offset-display')) {
+        openTimeSyncModal();
+    }
+};
+
+function updateOffsetModalDisplay() {
+    const display = document.getElementById('modal-current-offset-display');
+    const input = document.getElementById('manual-offset-input');
+    if (display) {
+        if (customTimeOffsetSec > 0) display.textContent = `+${customTimeOffsetSec} วินาที`;
+        else if (customTimeOffsetSec < 0) display.textContent = `${customTimeOffsetSec} วินาที`;
+        else display.textContent = '0 วินาที (เวลามาตรฐาน)';
+    }
+    if (input) {
+        input.value = customTimeOffsetSec;
+    }
 }
 let bosses = [];
 let isInvasionMode = false;
@@ -143,14 +383,8 @@ function setupTimeAutoFormat(inputId) {
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
-    fetch('https://worldtimeapi.org/api/timezone/Asia/Bangkok')
-        .then(res => res.json())
-        .then(data => {
-            if (data && data.utc_datetime) {
-                timeOffset = new Date(data.utc_datetime).getTime() - Date.now();
-            }
-        })
-        .catch(e => console.error('Time sync error:', e));
+    syncTimeWithServer(false);
+    setInterval(() => syncTimeWithServer(false), 5 * 60 * 1000);
 
     lastAutoPeriodState = checkAutoInvasionSchedule();
     if (lastAutoPeriodState && !isInvasionMode) {
@@ -815,7 +1049,8 @@ function updateCountdowns() {
         const hh = String(thaiDate.getUTCHours()).padStart(2, '0');
         const mm = String(thaiDate.getUTCMinutes()).padStart(2, '0');
         const ss = String(thaiDate.getUTCSeconds()).padStart(2, '0');
-        clockEl.textContent = `🕒 ${hh}:${mm}:${ss}`;
+        const offsetHint = customTimeOffsetSec !== 0 ? ` (${customTimeOffsetSec > 0 ? '+' : ''}${customTimeOffsetSec}s)` : '';
+        clockEl.textContent = `🕒 ${hh}:${mm}:${ss}${offsetHint}`;
     }
 
     let hasNew1MinWarning = false;

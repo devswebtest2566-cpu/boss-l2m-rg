@@ -69,6 +69,21 @@ header {
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+#live-thai-clock {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+#live-thai-clock:hover {
+    background: rgba(0, 242, 254, 0.22) !important;
+    border-color: rgba(0, 242, 254, 0.6) !important;
+    box-shadow: 0 0 12px rgba(0, 242, 254, 0.35);
+    transform: translateY(-1px);
+}
+#live-thai-clock:active {
+    transform: translateY(1px);
+}
+
 /* Buttons */
 .btn {
     padding: 6px 16px;
