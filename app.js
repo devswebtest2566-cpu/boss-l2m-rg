@@ -655,26 +655,124 @@ async function addLog(actionType, bossName, details, serverContext = 'home') {
 }
 
 let realtimeInitialized = false;
-function initRealtime() {
-    if (realtimeInitialized || !supabaseClient) return;
-    realtimeInitialized = true;
+let bossChannel = null;
+let scheduleChannel = null;
 
-    supabaseClient
+function initRealtime() {
+    if (!supabaseClient) return;
+
+    // Clean up existing channels before re-subscribing
+    if (bossChannel) {
+        try { supabaseClient.removeChannel(bossChannel); } catch (e) { }
+    }
+    if (scheduleChannel) {
+        try { supabaseClient.removeChannel(scheduleChannel); } catch (e) { }
+    }
+
+    bossChannel = supabaseClient
         .channel('public:bosses')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'bosses' }, payload => {
             fetchBosses();
         })
-        .subscribe();
+        .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+                console.log('[Realtime] Subscribed to bosses');
+            } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                console.warn('[Realtime] Bosses channel status:', status);
+            }
+        });
 
-    supabaseClient
+    scheduleChannel = supabaseClient
         .channel('public:schedule_events')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_events' }, payload => {
             if (typeof fetchScheduleEvents === 'function') {
                 fetchScheduleEvents();
             }
         })
-        .subscribe();
+        .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+                console.log('[Realtime] Subscribed to schedule_events');
+            }
+        });
+
+    realtimeInitialized = true;
 }
+
+// --- Auto-Resync System (Tab Resume / Focus / Online / Active Polling) ---
+let lastResyncTime = 0;
+const RESYNC_DEBOUNCE_MS = 4000; // Debounce to prevent multiple queries within 4 seconds
+
+async function resyncAllData(force = false) {
+    const now = Date.now();
+    if (!force && (now - lastResyncTime < RESYNC_DEBOUNCE_MS)) {
+        return;
+    }
+    lastResyncTime = now;
+
+    console.log('[Sync] Resyncing data on tab wake-up / focus...');
+
+    try {
+        // 1. Fetch bosses immediately
+        await fetchBosses();
+
+        // 2. Fetch schedule events if available
+        if (typeof fetchScheduleEvents === 'function') {
+            fetchScheduleEvents();
+        }
+
+        // 3. Immediately refresh countdown displays
+        updateCountdowns();
+
+        // 4. Resync server time if older than 2 minutes
+        if (!timeSyncStatus.lastSyncTime || (now - timeSyncStatus.lastSyncTime > 2 * 60 * 1000)) {
+            syncTimeWithServer(false);
+        }
+
+        // 5. Ensure Supabase realtime channels are alive / reconnect if dropped
+        if (supabaseClient) {
+            if (!bossChannel || bossChannel.state === 'closed' || bossChannel.state === 'errored') {
+                console.log('[Realtime] Re-subscribing channels after sleep/wake...');
+                initRealtime();
+            }
+        }
+    } catch (e) {
+        console.error('[Sync] Error during resyncAllData:', e);
+    }
+}
+
+// Auto-resync when user switches tab or unlocks/opens device
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        resyncAllData();
+    }
+});
+
+window.addEventListener('focus', () => {
+    resyncAllData();
+});
+
+window.addEventListener('pageshow', () => {
+    resyncAllData();
+});
+
+window.addEventListener('online', () => {
+    console.log('[Network] Network reconnected, forcing full resync...');
+    resyncAllData(true);
+});
+
+// Fallback background polling (runs every 30 seconds, ONLY when tab is visible)
+setInterval(() => {
+    if (document.visibilityState === 'visible') {
+        const now = Date.now();
+        if (now - lastResyncTime >= 25000) {
+            fetchBosses();
+            if (typeof fetchScheduleEvents === 'function') {
+                fetchScheduleEvents();
+            }
+            lastResyncTime = now;
+        }
+    }
+}, 30000);
 
 async function logUserAccess() {
     if (!supabaseClient) return;
