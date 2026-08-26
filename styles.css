@@ -362,6 +362,30 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 1rem; }
 
 .highlight-text { color: var(--accent-gold); font-size: 1.1rem; margin-bottom: 1.2rem; text-align: center; font-weight: 700; text-shadow: 0 0 10px rgba(250, 204, 21, 0.3); }
 
+/* Boss Edit Reg Preview */
+.boss-reg-preview {
+    background: rgba(0, 242, 254, 0.08);
+    border: 1px solid rgba(0, 242, 254, 0.25);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 1.2rem;
+    font-size: 0.85rem;
+    color: #e2e8f0;
+}
+.boss-reg-preview .preview-title {
+    color: #00f2fe;
+    font-weight: 700;
+    margin-bottom: 4px;
+    font-size: 0.85rem;
+}
+.boss-reg-preview .preview-detail {
+    color: #94a3b8;
+    line-height: 1.5;
+}
+.boss-reg-preview .preview-detail strong {
+    color: #facc15;
+}
+
 @media (max-width: 1024px) {
     .boss-table-container { overflow-x: auto; }
     

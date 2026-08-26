@@ -7,7 +7,7 @@
     <title>Revengers time boss</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=5">
+    <link rel="stylesheet" href="styles.css?v=6">
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- SweetAlert2 -->
@@ -214,10 +214,12 @@
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>% โอกาสเกิด (Spawn Rate)</label>
-                    <input type="number" id="boss-spawn-rate" placeholder="100" min="0" max="100" value="100">
+                <div id="boss-reg-preview" class="boss-reg-preview" style="display: none;">
+                    <div class="preview-title">⏱️ คำนวณเวลาเกิดรอบถัดไปอัตโนมัติ</div>
+                    <div class="preview-detail" id="boss-reg-preview-detail"></div>
                 </div>
+
+
 
                 <div class="form-group toggle-group">
                     <label>
@@ -479,7 +481,7 @@
         }
     </style>
 
-    <script src="app.js?v=53"></script>
+    <script src="app.js?v=54"></script>
 </body>
 
 </html>

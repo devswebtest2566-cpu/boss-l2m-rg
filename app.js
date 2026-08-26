@@ -403,6 +403,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (bothLabel) bothLabel.style.display = 'flex';
             const delBtn = document.getElementById('btn-delete-boss');
             if (delBtn) delBtn.style.display = 'none';
+            const previewContainer = document.getElementById('boss-reg-preview');
+            if (previewContainer) previewContainer.style.display = 'none';
             openModal('boss-modal');
         });
     }
@@ -500,6 +502,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('boss-form').addEventListener('submit', handleSaveBoss);
     document.getElementById('dead-form').addEventListener('submit', handleConfirmDeath);
+
+    ['boss-reg-h', 'boss-reg-m', 'boss-first-h', 'boss-first-m', 'boss-use-first'].forEach(inputId => {
+        const el = document.getElementById(inputId);
+        if (el) {
+            el.addEventListener('input', updateBossEditSpawnPreview);
+            el.addEventListener('change', updateBossEditSpawnPreview);
+        }
+    });
 
     // Start countdown timer
     countdownInterval = setInterval(updateCountdowns, 1000);
@@ -1004,9 +1014,6 @@ function createBossRow(boss, index) {
     const respawnMins = boss.regular_respawn_mins || 0;
     const respawnHours = respawnMins > 0 ? `${(respawnMins / 60).toFixed(0)} ชม.` : '-';
 
-    // Fixed Spawn Chance Percentage
-    const spawnRate = (boss.spawn_rate_percent !== undefined && boss.spawn_rate_percent !== null) ? boss.spawn_rate_percent + '%' : '100%';
-
     // Spawn Pill Format
     let spawnPillHTML = '';
 
@@ -1429,6 +1436,59 @@ window.openDeadModal = async function (id) {
     openModal('dead-modal');
 }
 
+function updateBossEditSpawnPreview() {
+    const previewContainer = document.getElementById('boss-reg-preview');
+    const detailEl = document.getElementById('boss-reg-preview-detail');
+    if (!previewContainer || !detailEl) return;
+
+    const id = document.getElementById('boss-id').value;
+    if (!id) {
+        previewContainer.style.display = 'none';
+        return;
+    }
+
+    const boss = bosses.find(b => b.id === id);
+    if (!boss || !boss.last_death_time) {
+        previewContainer.style.display = 'none';
+        return;
+    }
+
+    const regH = parseInt(document.getElementById('boss-reg-h').value) || 0;
+    const regM = parseInt(document.getElementById('boss-reg-m').value) || 0;
+    const useFirst = document.getElementById('boss-use-first').checked;
+    const firstH = parseInt(document.getElementById('boss-first-h').value) || 0;
+    const firstM = parseInt(document.getElementById('boss-first-m').value) || 0;
+
+    const minsToAdd = useFirst ? ((firstH * 60) + firstM) : ((regH * 60) + regM);
+
+    const deathDate = new Date(boss.last_death_time);
+    const newNextSpawnDate = new Date(deathDate.getTime() + (minsToAdd * 60 * 1000));
+
+    const thaiDeath = getThaiDateFromUTC(deathDate);
+    const dDD = String(thaiDeath.getUTCDate()).padStart(2, '0');
+    const dMM = String(thaiDeath.getUTCMonth() + 1).padStart(2, '0');
+    const dHH = String(thaiDeath.getUTCHours()).padStart(2, '0');
+    const dMin = String(thaiDeath.getUTCMinutes()).padStart(2, '0');
+    const deathStr = `${dDD}/${dMM} ${dHH}:${dMin}`;
+
+    const thaiSpawn = getThaiDateFromUTC(newNextSpawnDate);
+    const sDD = String(thaiSpawn.getUTCDate()).padStart(2, '0');
+    const sMM = String(thaiSpawn.getUTCMonth() + 1).padStart(2, '0');
+    const sHH = String(thaiSpawn.getUTCHours()).padStart(2, '0');
+    const sMin = String(thaiSpawn.getUTCMinutes()).padStart(2, '0');
+    const spawnStr = `${sDD}/${sMM} ${sHH}:${sMin}`;
+
+    let durationLabel = '';
+    const h = Math.floor(minsToAdd / 60);
+    const m = minsToAdd % 60;
+    if (h > 0 && m > 0) durationLabel = `${h} ชม. ${m} นาที`;
+    else if (h > 0) durationLabel = `${h} ชม.`;
+    else durationLabel = `${m} นาที`;
+
+    detailEl.innerHTML = `💀 ตายล่าสุด: <span style="color:#fca5a5; font-weight:600;">${deathStr}</span> (บวก ${durationLabel})<br>➔ ⚡ เกิดรอบถัดไป: <strong>${spawnStr}</strong>`;
+    previewContainer.style.display = 'block';
+}
+
 window.editBoss = function (id) {
     const boss = bosses.find(b => b.id === id);
     if (!boss) return;
@@ -1444,7 +1504,6 @@ window.editBoss = function (id) {
 
     document.getElementById('boss-use-first').checked = boss.use_first_spawn;
     document.getElementById('boss-active').checked = boss.is_active;
-    document.getElementById('boss-spawn-rate').value = boss.spawn_rate_percent ?? 100;
 
     if (boss.server_type === 'invasion') {
         document.getElementById('boss-server-inv').checked = true;
@@ -1457,6 +1516,9 @@ window.editBoss = function (id) {
     document.getElementById('modal-title').textContent = 'Edit Boss';
     const delBtn = document.getElementById('btn-delete-boss');
     if (delBtn) delBtn.style.display = 'inline-block';
+
+    updateBossEditSpawnPreview();
+
     openModal('boss-modal');
 }
 
@@ -1483,17 +1545,30 @@ async function handleSaveBoss(e) {
         first_spawn_mins: (firstH * 60) + firstM,
         regular_respawn_mins: (regH * 60) + regM,
         use_first_spawn: document.getElementById('boss-use-first').checked,
-        is_active: document.getElementById('boss-active').checked,
-        spawn_rate_percent: parseInt(document.getElementById('boss-spawn-rate').value) || 100
+        is_active: document.getElementById('boss-active').checked
     };
 
     if (id) {
+        const boss = bosses.find(b => b.id === id);
         const payload = { ...basePayload, server_type: serverType };
+        let logDetail = "แก้ไขข้อมูลบอส";
+
+        // หากมีเวลาตายล่าสุด ให้คำนวณเวลาเกิดรอบถัดไปใหม่ให้อัตโนมัติ (เวลาตายล่าสุด + เวลาเกิดปกติใหม่)
+        if (boss && boss.last_death_time) {
+            const minsToAdd = basePayload.use_first_spawn ? basePayload.first_spawn_mins : basePayload.regular_respawn_mins;
+            const deathDate = new Date(boss.last_death_time);
+            const nextSpawnDate = new Date(deathDate.getTime() + (minsToAdd * 60 * 1000));
+            payload.next_spawn_time = nextSpawnDate.toISOString();
+
+            const newSpawnStr = formatHHmm(nextSpawnDate.toISOString());
+            logDetail = `แก้ไขข้อมูลบอส (คำนวณเวลาเกิดใหม่เป็น ${newSpawnStr} จากเวลาตายเดิม ${formatHHmm(boss.last_death_time)})`;
+        }
+
         const { error } = await supabaseClient.from('bosses').update(payload).eq('id', id);
         if (error) {
             swalDark.fire('Error', "Error updating: " + error.message, 'error');
         } else {
-            addLog("Edit", payload.name, "แก้ไขข้อมูลบอส", serverType);
+            addLog("Edit", payload.name, logDetail, serverType);
         }
     } else {
         if (serverType === 'both') {
