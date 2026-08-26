@@ -1011,8 +1011,7 @@ function createBossRow(boss, index) {
     }
 
     // Calculate Cooldown in Hours
-    const respawnMins = boss.regular_respawn_mins || 0;
-    const respawnHours = respawnMins > 0 ? `${(respawnMins / 60).toFixed(0)} ชม.` : '-';
+    const respawnHours = formatCooldown(boss.regular_respawn_mins);
 
     // Spawn Pill Format
     let spawnPillHTML = '';
@@ -1276,6 +1275,19 @@ function formatDate(dateInput) {
     const min = String(thaiDate.getUTCMinutes()).padStart(2, '0');
 
     return `${dd}/${month}/${yr} ${hh}:${min}`;
+}
+
+function formatCooldown(mins) {
+    if (!mins || mins <= 0) return '-';
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    if (m === 0) {
+        return `${h} ชม.`;
+    } else if (h === 0) {
+        return `${m} นาที`;
+    } else {
+        return `${h}.${String(m).padStart(2, '0')} ชม.`;
+    }
 }
 
 // --- Modals Logic ---
