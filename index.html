@@ -7,7 +7,7 @@
     <title>Revengers time boss</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=7">
+    <link rel="stylesheet" href="styles.css?v=8">
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- SweetAlert2 -->
@@ -72,7 +72,12 @@
                 <input type="text" id="search-input" placeholder="ค้นหาชื่อ Boss..." autocomplete="off"
                     spellcheck="false">
             </div>
-            <div style="display: flex; gap: 10px;">
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button id="refresh-data-btn" class="btn secondary" onclick="refreshTableData()"
+                    title="รีเฟรชข้อมูลในตารางทั้งหมด"
+                    style="background: rgba(0, 242, 254, 0.15); color: #00f2fe; border: 1px solid rgba(0, 242, 254, 0.4); position: relative;">
+                    <span id="refresh-icon" style="display: inline-block; transition: transform 0.6s ease;">🔄</span> รีเฟรช
+                </button>
                 <button id="toggle-schedule-btn" class="btn secondary" onclick="toggleScheduleView()"
                     title="เปิดตารางกิจกรรม"
                     style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white; position: relative;">📅
@@ -481,7 +486,7 @@
         }
     </style>
 
-    <script src="app.js?v=55"></script>
+    <script src="app.js?v=56"></script>
 </body>
 
 </html>

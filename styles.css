@@ -155,7 +155,7 @@ header {
     margin: 2rem auto 1.5rem;
     padding: 0 1rem;
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: center;
     gap: 15px;
     flex-wrap: wrap;
@@ -169,11 +169,11 @@ header {
     display: flex;
     align-items: center;
     gap: 12px;
-    width: 100%;
-    max-width: 400px;
+    flex: 1 1 300px;
+    width: auto;
+    min-width: 220px;
     backdrop-filter: blur(10px);
-    transition: border-color 0.3s ease;
-    flex: 1;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 .search-box:focus-within { border-color: var(--accent-cyan); box-shadow: 0 0 15px rgba(0, 242, 254, 0.15); }
 .search-box input {
@@ -837,3 +837,20 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 1rem; }
     70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
     100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
 }
+
+@keyframes spin-anim {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.spin-loading {
+    animation: spin-anim 0.7s linear infinite !important;
+}
+
+#refresh-data-btn:hover {
+    background: rgba(0, 242, 254, 0.25) !important;
+    border-color: rgba(0, 242, 254, 0.7) !important;
+    box-shadow: 0 0 15px rgba(0, 242, 254, 0.35);
+    transform: translateY(-1px);
+}
+

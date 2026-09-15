@@ -2802,3 +2802,50 @@ function createScreenshotSection(title, color, bossList, isExpanded, allSections
     section.appendChild(grid);
     return sectionObj;
 }
+
+// --- Manual Refresh Button ---
+window.refreshTableData = async function () {
+    const icon = document.getElementById('refresh-icon');
+    const btn = document.getElementById('refresh-data-btn');
+    if (icon) icon.classList.add('spin-loading');
+    if (btn) btn.disabled = true;
+
+    try {
+        if (isScheduleView) {
+            if (typeof fetchScheduleEvents === 'function') {
+                await fetchScheduleEvents();
+            }
+        } else {
+            await fetchBosses();
+            updateCountdowns();
+        }
+
+        // Resync time status if needed
+        if (typeof syncTimeWithServer === 'function') {
+            syncTimeWithServer(false);
+        }
+
+        // Toast feedback
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 1500,
+            timerProgressBar: true,
+            background: '#1e293b',
+            color: '#f8fafc'
+        });
+        Toast.fire({
+            icon: 'success',
+            title: 'รีเฟรชข้อมูลเรียบร้อยแล้ว'
+        });
+    } catch (err) {
+        console.error('Error refreshing data:', err);
+    } finally {
+        setTimeout(() => {
+            if (icon) icon.classList.remove('spin-loading');
+            if (btn) btn.disabled = false;
+        }, 500);
+    }
+};
+
