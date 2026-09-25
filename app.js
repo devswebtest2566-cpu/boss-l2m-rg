@@ -794,6 +794,9 @@ function showDashboard() {
         }, 50);
     }
     fetchBosses();
+    if (typeof fetchScheduleEvents === 'function') {
+        fetchScheduleEvents();
+    }
     updateSoundBtnUI();
     initRealtime(); // เริ่มต้นระบบ Realtime
 }
@@ -847,7 +850,7 @@ function applyRoleUI() {
         if (addBtn) addBtn.style.display = 'inline-block';
         if (logBtn) logBtn.style.display = 'inline-block';
         if (resetBtn) resetBtn.style.display = 'inline-block';
-        if (accessLogBtn) accessLogBtn.style.display = 'inline-flex';
+        if (addScheduleBtn) addScheduleBtn.style.display = 'inline-block';
 
         let styleEl = document.getElementById('viewer-style');
         if (styleEl) styleEl.remove();
