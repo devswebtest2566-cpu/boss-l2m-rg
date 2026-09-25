@@ -784,10 +784,6 @@ setInterval(() => {
     }
 }, 30000);
 
-async function logUserAccess() {
-    // ปิดการเก็บ log การเข้าใช้งาน / user_access_logs
-    return;
-}
 
 function showDashboard() {
     const dashboard = document.getElementById('dashboard-screen');
@@ -828,7 +824,6 @@ function applyRoleUI() {
     const logBtn = document.getElementById('log-btn');
     const resetBtn = document.getElementById('reset-boss-btn');
     const addScheduleBtn = document.getElementById('add-schedule-btn');
-    const accessLogBtn = document.getElementById('access-log-btn');
     const toggleViewerBtn = document.getElementById('toggle-viewer-mode-btn');
 
     if (toggleViewerBtn) {
@@ -840,7 +835,6 @@ function applyRoleUI() {
         if (logBtn) logBtn.style.display = 'none';
         if (resetBtn) resetBtn.style.display = 'none';
         if (addScheduleBtn) addScheduleBtn.style.display = 'none';
-        if (accessLogBtn) accessLogBtn.style.display = 'none';
 
         let styleEl = document.getElementById('viewer-style');
         if (!styleEl) {
@@ -2169,94 +2163,6 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-window.openAccessLogModal = async function () {
-    if (currentUserRole === 'viewer') return;
-
-    const { value: pin } = await swalDark.fire({
-        title: '🔒 ยืนยันสิทธิ์',
-        text: 'กรุณากรอกรหัสผ่านเพื่อดู IP Address',
-        input: 'password',
-        inputPlaceholder: 'รหัสผ่าน',
-        showCancelButton: true,
-        confirmButtonText: 'ตกลง',
-        cancelButtonText: 'ยกเลิก',
-        preConfirm: (pin) => {
-            if (pin !== 'nomercy') {
-                Swal.showValidationMessage('รหัสผ่านไม่ถูกต้อง');
-            }
-            return pin;
-        }
-    });
-
-    if (!pin) return;
-
-    openModal('access-log-modal');
-    const tbody = document.getElementById('access-log-table-body');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">กำลังโหลดข้อมูล...</td></tr>';
-
-    if (!supabaseClient) return;
-
-    const { data, error } = await supabaseClient
-        .from('user_access_logs')
-        .select('*')
-        .order('login_time', { ascending: false })
-        .limit(100);
-
-    if (error) {
-        console.error('Error fetching access logs:', error);
-        if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #ef4444;">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
-        return;
-    }
-
-    if (tbody) {
-        tbody.innerHTML = '';
-        if (data && data.length > 0) {
-            // Group by IP and Username
-            const groupedLogs = {};
-            data.forEach(log => {
-                const key = `${log.ip_address || '-'}_${log.username}`;
-                if (!groupedLogs[key]) {
-                    groupedLogs[key] = {
-                        ip: log.ip_address || '-',
-                        username: log.username,
-                        role: log.role,
-                        times: []
-                    };
-                }
-                const logTime = new Date(log.login_time);
-                const formatTime = `${logTime.toLocaleDateString('th-TH')} ${logTime.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}`;
-                groupedLogs[key].times.push(formatTime);
-            });
-
-            Object.values(groupedLogs).forEach(group => {
-                const tr = document.createElement('tr');
-                tr.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
-
-                let roleHtml = '';
-                if (group.role === 'admin') {
-                    roleHtml = '<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4);">Admin</span>';
-                } else {
-                    roleHtml = '<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4);">Viewer</span>';
-                }
-
-                let timesDisplay = group.times.slice(0, 3).join('<br>');
-                if (group.times.length > 3) {
-                    timesDisplay += `<br><span style="color: #64748b; font-size: 0.75rem;">และอีก ${group.times.length - 3} ครั้ง...</span>`;
-                }
-
-                tr.innerHTML = `
-                    <td style="padding: 12px 10px; vertical-align: top; font-family: monospace; font-size: 0.85rem; line-height: 1.5;">${timesDisplay}</td>
-                    <td style="padding: 12px 10px; vertical-align: top; color: #facc15; font-weight: 500;">${group.username}</td>
-                    <td style="padding: 12px 10px; vertical-align: top;">${roleHtml}</td>
-                    <td style="padding: 12px 10px; vertical-align: top; font-family: monospace; color: #94a3b8;">${group.ip}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-        } else {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">ยังไม่มีประวัติการเข้าใช้งาน</td></tr>';
-        }
-    }
-}
 
 // --- Schedule Logic ---
 let isScheduleView = false;

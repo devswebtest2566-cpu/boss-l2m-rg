@@ -42,17 +42,6 @@
                         สรุปเวลา</button>
                     <button id="log-btn" class="btn secondary" onclick="openLogModal()" title="ประวัติการแก้ไข">📜
                         ประวัติ</button>
-                    <button id="access-log-btn" class="btn logout-icon-btn" onclick="openAccessLogModal()"
-                        title="ประวัติการเข้าใช้งาน"
-                        style="margin-right: 0.5rem; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); color: #3b82f6;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
-                            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
-                            <line x1="6" y1="6" x2="6.01" y2="6"></line>
-                            <line x1="6" y1="18" x2="6.01" y2="18"></line>
-                        </svg>
-                    </button>
                     <button id="logout-btn" class="btn logout-icon-btn" onclick="logout()" title="ออกจากระบบ">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -400,31 +389,6 @@
         </div>
     </div>
 
-    <!-- Access Log Modal -->
-    <div id="access-log-modal" class="modal">
-        <div class="modal-content" style="max-width: 1000px; width: 95%;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h3 style="margin: 0;">🖥️ ประวัติการเข้าใช้งาน (Access Logs)</h3>
-                <button class="btn secondary" onclick="closeModal('access-log-modal')"
-                    style="padding: 4px 10px;">X</button>
-            </div>
-            <div style="max-height: 400px; overflow-y: auto;">
-                <table class="boss-table" style="margin-top: 0;">
-                    <thead>
-                        <tr>
-                            <th style="padding: 8px;">เวลา</th>
-                            <th style="padding: 8px;">ผู้ใช้</th>
-                            <th style="padding: 8px;">สิทธิ์</th>
-                            <th style="padding: 8px;">IP Address</th>
-                        </tr>
-                    </thead>
-                    <tbody id="access-log-table-body">
-                        <!-- Filled by JS -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
 
     <!-- Screenshot Modal -->
     <div id="screenshot-modal" class="modal" style="align-items: flex-start; padding: 5vh 0; overflow-y: auto;">
