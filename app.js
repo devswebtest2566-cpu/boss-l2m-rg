@@ -785,40 +785,8 @@ setInterval(() => {
 }, 30000);
 
 async function logUserAccess() {
-    if (!supabaseClient) return;
-    if (sessionStorage.getItem('access_logged') === 'true') return;
-
-    let ip = 'Unknown';
-    try {
-        const res = await fetch('https://api.ipify.org?format=json');
-        if (res.ok) {
-            const data = await res.json();
-            ip = data.ip || 'Unknown';
-        }
-    } catch (e) {
-        console.warn('Could not fetch IP, might be blocked by adblocker:', e);
-    }
-
-    try {
-        let editorName = localStorage.getItem('editor_name');
-        if (!editorName || currentUserRole !== 'admin') {
-            editorName = 'Viewer';
-        }
-
-        const { error } = await supabaseClient.from('user_access_logs').insert([{
-            username: editorName,
-            role: currentUserRole || 'unknown',
-            ip_address: ip
-        }]);
-
-        if (error) {
-            console.error('Error inserting access log:', error);
-        } else {
-            sessionStorage.setItem('access_logged', 'true');
-        }
-    } catch (e) {
-        console.error('Error in logUserAccess:', e);
-    }
+    // ปิดการเก็บ log การเข้าใช้งาน / user_access_logs
+    return;
 }
 
 function showDashboard() {
@@ -832,7 +800,6 @@ function showDashboard() {
     fetchBosses();
     updateSoundBtnUI();
     initRealtime(); // เริ่มต้นระบบ Realtime
-    logUserAccess(); // บันทึกประวัติการเข้าใช้งานและ IP
 }
 
 let isViewerModeSimulated = false;
