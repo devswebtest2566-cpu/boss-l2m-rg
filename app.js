@@ -1067,7 +1067,7 @@ function createBossRow(boss, index) {
     if (!boss.is_active) {
         spawnPillHTML = `<span class="spawn-pill" id="countdown-${boss.id}" style="font-size: 1rem; padding: 4px 10px; font-weight: bold; font-family: monospace; background: rgba(255,255,255,0.1); color: #94a3b8;">--:--</span>`;
     } else if (nextSpawnTime > 0 && nextSpawnTime <= now) {
-        spawnPillHTML = `<span class="spawn-pill spawned-pill" id="countdown-${boss.id}" style="font-size: 0.95rem; padding: 4px 10px; font-weight: bold;">⚡ SPAWNED</span>`;
+        spawnPillHTML = `<span class="spawn-pill spawned-pill" id="countdown-${boss.id}" style="font-size: 0.95rem; padding: 4px 10px; font-weight: bold;">⚡ SPAWNED (${formatHHmm(boss.next_spawn_time)})</span>`;
     } else {
         spawnPillHTML = `<span class="spawn-pill blue-pill" id="countdown-${boss.id}" style="font-size: 1rem; padding: 4px 10px; font-weight: bold; font-family: monospace;">⏱️ ${formatHHmm(boss.next_spawn_time)}</span>`;
     }
@@ -1263,7 +1263,7 @@ function updateCountdowns() {
 
         if (nextSpawn <= now) {
             el.className = "spawn-pill spawned-pill";
-            el.textContent = "⚡ SPAWNED";
+            el.textContent = `⚡ SPAWNED (${formatHHmm(boss.next_spawn_time)})`;
         }
 
         // เช็กการเตือนล่วงหน้า 1 นาที
@@ -2749,7 +2749,7 @@ function createScreenshotSection(title, color, bossList, isExpanded, allSections
         } else {
             const nextTime = new Date(boss.next_spawn_time).getTime();
             if (nextTime <= now) {
-                timeHtml = '<span class="boss-time" style="color: #facc15; font-weight: bold;">⚡ SPAWNED</span>';
+                timeHtml = `<span class="boss-time" style="color: #facc15; font-weight: bold;">⚡ SPAWNED (${formatHHmm(boss.next_spawn_time)})</span>`;
             } else {
                 timeHtml = `<span class="boss-time" style="color: #00f2fe;">⏱️ ${formatHHmm(boss.next_spawn_time)}</span>`;
             }
