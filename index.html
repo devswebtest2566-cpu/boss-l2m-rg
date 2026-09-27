@@ -61,12 +61,16 @@
                 <input type="text" id="search-input" placeholder="ค้นหาชื่อ Boss..." autocomplete="off"
                     spellcheck="false">
             </div>
-            <div style="display: flex; gap: 10px; align-items: center;">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                 <button id="refresh-data-btn" class="btn secondary" onclick="refreshTableData()"
                     title="รีเฟรชข้อมูลในตารางทั้งหมด"
                     style="background: rgba(0, 242, 254, 0.15); color: #00f2fe; border: 1px solid rgba(0, 242, 254, 0.4); position: relative;">
                     <span id="refresh-icon" style="display: inline-block; transition: transform 0.6s ease;">🔄</span> รีเฟรช
                 </button>
+                <button id="toggle-farm-btn" class="btn secondary" onclick="toggleFarmView()"
+                    title="สลับไปดูบอสเซิฟฟาม"
+                    style="background: linear-gradient(135deg, #10b981, #059669); color: white;">🌾
+                    เซิฟฟาม</button>
                 <button id="toggle-schedule-btn" class="btn secondary" onclick="toggleScheduleView()"
                     title="เปิดตารางกิจกรรม"
                     style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white; position: relative;">📅
@@ -161,7 +165,7 @@
                 <div class="form-group" style="margin-bottom: 1.5rem;">
                     <label>เซิร์ฟเวอร์ (Server)</label>
                     <div
-                        style="display: flex; gap: 1rem; background: rgba(0,0,0,0.3); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                        style="display: flex; gap: 1rem; background: rgba(0,0,0,0.3); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); flex-wrap: wrap;">
                         <label
                             style="display: flex; align-items: center; gap: 0.5rem; margin: 0; cursor: pointer; color: #fff;">
                             <input type="radio" name="server_type" value="home" id="boss-server-home" checked>
@@ -171,6 +175,12 @@
                             style="display: flex; align-items: center; gap: 0.5rem; margin: 0; cursor: pointer; color: #fca5a5;">
                             <input type="radio" name="server_type" value="invasion" id="boss-server-inv"> เซิร์ฟศัตรู
                             (Invasion)
+                        </label>
+                        <label
+                            style="display: flex; align-items: center; gap: 0.5rem; margin: 0; cursor: pointer; color: #6ee7b7;"
+                            id="label-boss-server-farm">
+                            <input type="radio" name="server_type" value="home_farm" id="boss-server-farm">
+                            เซิฟฟาม (Farm)
                         </label>
                         <label
                             style="display: flex; align-items: center; gap: 0.5rem; margin: 0; cursor: pointer; color: #d8b4fe;"
@@ -450,7 +460,7 @@
         }
     </style>
 
-    <script src="app.js?v=56"></script>
+    <script src="app.js?v=57"></script>
 </body>
 
 </html>

@@ -847,9 +847,14 @@ function applyRoleUI() {
         }
         styleEl.textContent = '.col-action, .action-cell { display: none !important; }';
     } else {
-        if (addBtn) addBtn.style.display = 'inline-block';
+        if (!isFarmView) {
+            if (addBtn) addBtn.style.display = 'inline-block';
+            if (resetBtn) resetBtn.style.display = 'inline-block';
+        } else {
+            if (addBtn) addBtn.style.display = 'none';
+            if (resetBtn) resetBtn.style.display = 'none';
+        }
         if (logBtn) logBtn.style.display = 'inline-block';
-        if (resetBtn) resetBtn.style.display = 'inline-block';
         if (addScheduleBtn) addScheduleBtn.style.display = 'inline-block';
 
         let styleEl = document.getElementById('viewer-style');
@@ -886,6 +891,68 @@ async function fetchBosses() {
     }
 }
 
+// --- Farm Server View Logic ---
+let isFarmView = false;
+window.toggleFarmView = function () {
+    isFarmView = !isFarmView;
+    const toggleFarmBtn = document.getElementById('toggle-farm-btn');
+    const toggleScheduleBtn = document.getElementById('toggle-schedule-btn');
+    const invasionBtn = document.getElementById('invasion-btn');
+    const resetBossBtn = document.getElementById('reset-boss-btn');
+    const addBossBtn = document.getElementById('add-boss-btn');
+    const homeTitle = document.getElementById('home-title');
+    const invTableContainer = document.getElementById('inv-table-container');
+    const mainContent = document.getElementById('main-content');
+    const scheduleContent = document.getElementById('schedule-main-content');
+
+    // If schedule view was active, close it
+    if (isScheduleView) {
+        isScheduleView = false;
+        if (scheduleContent) scheduleContent.style.display = 'none';
+        if (mainContent) mainContent.style.display = 'block';
+        if (toggleScheduleBtn) {
+            toggleScheduleBtn.textContent = '📅 ตารางกิจกรรม';
+            toggleScheduleBtn.style.background = 'linear-gradient(135deg, #8b5cf6, #6d28d9)';
+        }
+    }
+
+    if (isFarmView) {
+        if (toggleFarmBtn) {
+            toggleFarmBtn.innerHTML = '🛡️ กลับหน้าหลัก';
+            toggleFarmBtn.style.background = 'linear-gradient(135deg, #0ea5e9, #2563eb)';
+        }
+        // Hide other buttons on Farm view as requested
+        if (toggleScheduleBtn) toggleScheduleBtn.style.display = 'none';
+        if (invasionBtn) invasionBtn.style.display = 'none';
+        if (resetBossBtn) resetBossBtn.style.display = 'none';
+        if (addBossBtn) addBossBtn.style.display = 'none';
+        if (invTableContainer) invTableContainer.style.display = 'none';
+
+        if (homeTitle) {
+            homeTitle.innerHTML = '🌾 เซิร์ฟเวอร์ฟาร์ม (Farm Server)';
+            homeTitle.style.color = '#34d399';
+        }
+    } else {
+        if (toggleFarmBtn) {
+            toggleFarmBtn.innerHTML = '🌾 เซิฟฟาม';
+            toggleFarmBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+        }
+        if (toggleScheduleBtn) toggleScheduleBtn.style.display = 'inline-flex';
+        if (invasionBtn) invasionBtn.style.display = 'inline-flex';
+        if (homeTitle) {
+            homeTitle.innerHTML = `🛡️ เซิร์ฟเวอร์เรา (Home)
+                <button class="btn secondary action-cell" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); font-size: 0.85rem; padding: 5px 12px;" onclick="promptResetTime('home')">🔄 รีเซตเวลาบอส</button>`;
+            homeTitle.style.color = '#fff';
+        }
+        if (isInvasionMode && invTableContainer) {
+            invTableContainer.style.display = 'block';
+        }
+        applyRoleUI();
+    }
+
+    renderBosses();
+};
+
 // --- Smart Sort & Render (Grouped Table View) ---
 function renderBosses() {
     const bossTableBody = document.getElementById('boss-table-body');
@@ -916,7 +983,24 @@ function renderBosses() {
         return timeA - timeB;
     });
 
-    let homeBosses = filteredBosses.filter(b => b.server_type !== 'invasion');
+    if (isFarmView) {
+        let farmBosses = filteredBosses.filter(b => b.server_type === 'home_farm');
+        let farmRowIndex = 1;
+        farmBosses.forEach(boss => {
+            bossTableBody.appendChild(createBossRow(boss, farmRowIndex++));
+        });
+
+        if (farmBosses.length === 0) {
+            const emptyRow = document.createElement('tr');
+            emptyRow.innerHTML = `<td colspan="8" style="text-align:center;padding:2rem;color:#94a3b8;">ยังไม่มีข้อมูลบอสเซิฟฟาม (server_type = 'home_farm')</td>`;
+            bossTableBody.appendChild(emptyRow);
+        }
+
+        updateCountdowns();
+        return;
+    }
+
+    let homeBosses = filteredBosses.filter(b => b.server_type !== 'invasion' && b.server_type !== 'home_farm');
     let invBosses = filteredBosses.filter(b => b.server_type === 'invasion');
 
     let homeRowIndex = 1;
@@ -1101,13 +1185,15 @@ function updateCountdowns() {
 
     const now = getNow();
 
-    const currentPeriodState = checkAutoInvasionSchedule();
-    if (currentPeriodState !== lastAutoPeriodState) {
-        lastAutoPeriodState = currentPeriodState;
-        if (currentPeriodState && !isInvasionMode) {
-            window.toggleInvasionMode();
-        } else if (!currentPeriodState && isInvasionMode) {
-            window.toggleInvasionMode();
+    if (!isFarmView) {
+        const currentPeriodState = checkAutoInvasionSchedule();
+        if (currentPeriodState !== lastAutoPeriodState) {
+            lastAutoPeriodState = currentPeriodState;
+            if (currentPeriodState && !isInvasionMode) {
+                window.toggleInvasionMode();
+            } else if (!currentPeriodState && isInvasionMode) {
+                window.toggleInvasionMode();
+            }
         }
     }
 
@@ -1483,6 +1569,9 @@ window.editBoss = function (id) {
 
     if (boss.server_type === 'invasion') {
         document.getElementById('boss-server-inv').checked = true;
+    } else if (boss.server_type === 'home_farm') {
+        const farmRadio = document.getElementById('boss-server-farm');
+        if (farmRadio) farmRadio.checked = true;
     } else {
         document.getElementById('boss-server-home').checked = true;
     }
@@ -1831,6 +1920,8 @@ async function loadBossLogs() {
         let serverBadge = '';
         if (log.server_context === 'invasion') {
             serverBadge = `<span style="font-size: 0.65rem; background: rgba(239, 68, 68, 0.15); color: #fca5a5; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(239, 68, 68, 0.3); margin-right: 6px; white-space: nowrap;">⚔️ ศัตรู</span>`;
+        } else if (log.server_context === 'home_farm') {
+            serverBadge = `<span style="font-size: 0.65rem; background: rgba(16, 185, 129, 0.15); color: #6ee7b7; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.3); margin-right: 6px; white-space: nowrap;">🌾 เซิฟฟาม</span>`;
         } else {
             serverBadge = `<span style="font-size: 0.65rem; background: rgba(0, 242, 254, 0.1); color: #00f2fe; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(0, 242, 254, 0.3); margin-right: 6px; white-space: nowrap;">🛡️ เรา</span>`;
         }
@@ -2178,12 +2269,22 @@ window.toggleScheduleView = function () {
     const searchBox = document.querySelector('.search-box');
 
     if (isScheduleView) {
+        if (isFarmView) {
+            isFarmView = false;
+            const toggleFarmBtn = document.getElementById('toggle-farm-btn');
+            if (toggleFarmBtn) {
+                toggleFarmBtn.innerHTML = '🌾 เซิฟฟาม';
+                toggleFarmBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+            }
+        }
         mainContent.style.display = 'none';
         scheduleContent.style.display = 'block';
         toggleBtn.textContent = '🛡️ กลับหน้าบอส';
         toggleBtn.style.background = 'linear-gradient(135deg, #0ea5e9, #2563eb)';
         if (invasionBtn) invasionBtn.style.display = 'none';
         if (searchBox) searchBox.style.display = 'none';
+        const toggleFarmBtn = document.getElementById('toggle-farm-btn');
+        if (toggleFarmBtn) toggleFarmBtn.style.display = 'none';
 
         const addBossBtn = document.getElementById('add-boss-btn');
         const resetBossBtn = document.getElementById('reset-boss-btn');
@@ -2199,6 +2300,8 @@ window.toggleScheduleView = function () {
         toggleBtn.style.background = 'linear-gradient(135deg, #8b5cf6, #6d28d9)';
         if (invasionBtn) invasionBtn.style.display = 'inline-flex';
         if (searchBox) searchBox.style.display = 'flex';
+        const toggleFarmBtn = document.getElementById('toggle-farm-btn');
+        if (toggleFarmBtn) toggleFarmBtn.style.display = 'inline-flex';
 
         applyRoleUI();
     }
@@ -2564,16 +2667,23 @@ window.openScreenshotModal = function() {
         return timeA - timeB;
     });
 
-    const homeBosses = activeBosses.filter(b => b.server_type !== 'invasion');
+    const homeBosses = activeBosses.filter(b => b.server_type !== 'invasion' && b.server_type !== 'home_farm');
     const invBosses = activeBosses.filter(b => b.server_type === 'invasion');
+    const farmBosses = activeBosses.filter(b => b.server_type === 'home_farm');
 
-    // Create sections (Home is expanded by default, Invasion is collapsed)
+    // Create sections (Home is expanded by default, Farm & Invasion are collapsed)
     const sections = [];
     
     if (homeBosses.length > 0) {
         const homeSection = createScreenshotSection('🛡️ เซิร์ฟเวอร์เรา (Home)', '#0ea5e9', homeBosses, true, sections);
         sections.push(homeSection);
         content.appendChild(homeSection.element);
+    }
+
+    if (farmBosses.length > 0) {
+        const farmSection = createScreenshotSection('🌾 เซิร์ฟเวอร์ฟาร์ม (Farm)', '#10b981', farmBosses, false, sections);
+        sections.push(farmSection);
+        content.appendChild(farmSection.element);
     }
     
     if (invBosses.length > 0) {
@@ -2582,7 +2692,7 @@ window.openScreenshotModal = function() {
         content.appendChild(invSection.element);
     }
 
-    if (homeBosses.length === 0 && invBosses.length === 0) {
+    if (homeBosses.length === 0 && invBosses.length === 0 && farmBosses.length === 0) {
         content.innerHTML = '<div style="text-align:center; padding: 20px; color: #94a3b8;">ไม่มีบอสที่เปิดใช้งานอยู่</div>';
     }
 
