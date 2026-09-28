@@ -248,7 +248,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 1rem; }
     border-bottom: 1px solid var(--border-subtle);
     transition: all 0.2s ease;
 }
-.boss-row:hover { background: #111111; }
+.boss-row:hover { background: rgba(0, 242, 254, 0.05) !important; }
 .boss-row td { padding: 12px 10px; font-size: 0.85rem; vertical-align: middle; }
 
 /* Cells & Typography */
@@ -485,7 +485,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 1rem; }
 }
 
 .invasion-table tr:hover {
-    background: rgba(239, 68, 68, 0.08) !important;
+    background: rgba(239, 68, 68, 0.1) !important;
 }
 
 .invasion-table .spawn-pill.blue-pill {
@@ -500,9 +500,53 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 1rem; }
     box-shadow: inset 4px 0 0 var(--accent-cyan), 0 0 12px rgba(0, 242, 254, 0.15);
 }
 
+.boss-row.in-hour-highlight:hover {
+    background: linear-gradient(90deg, rgba(0, 242, 254, 0.16) 0%, rgba(18, 22, 35, 0.6) 100%) !important;
+    box-shadow: inset 5px 0 0 var(--accent-cyan), 0 0 18px rgba(0, 242, 254, 0.35) !important;
+}
+
 .invasion-table .boss-row.in-hour-highlight {
     background: linear-gradient(90deg, rgba(239, 68, 68, 0.1) 0%, rgba(18, 22, 35, 0.4) 100%) !important;
     box-shadow: inset 4px 0 0 #ef4444, 0 0 12px rgba(239, 68, 68, 0.2);
+}
+
+.invasion-table .boss-row.in-hour-highlight:hover {
+    background: linear-gradient(90deg, rgba(239, 68, 68, 0.18) 0%, rgba(18, 22, 35, 0.6) 100%) !important;
+    box-shadow: inset 5px 0 0 #ef4444, 0 0 18px rgba(239, 68, 68, 0.4) !important;
+}
+
+/* Farm Server (Neon Violet / Purple) Highlight */
+.farm-table .boss-row.in-hour-highlight,
+.boss-row.farm-row.in-hour-highlight {
+    background: linear-gradient(90deg, rgba(168, 85, 247, 0.14) 0%, rgba(18, 22, 35, 0.4) 100%) !important;
+    box-shadow: inset 4px 0 0 #a855f7, 0 0 14px rgba(168, 85, 247, 0.3) !important;
+}
+
+.farm-table .boss-row.in-hour-highlight:hover,
+.boss-row.farm-row.in-hour-highlight:hover {
+    background: linear-gradient(90deg, rgba(168, 85, 247, 0.24) 0%, rgba(18, 22, 35, 0.6) 100%) !important;
+    box-shadow: inset 5px 0 0 #a855f7, 0 0 20px rgba(168, 85, 247, 0.5) !important;
+}
+
+.farm-table tr:hover,
+.boss-row.farm-row:hover {
+    background: rgba(168, 85, 247, 0.08) !important;
+}
+
+.farm-table .spawn-pill.blue-pill,
+.boss-row.farm-row .spawn-pill.blue-pill {
+    background: rgba(168, 85, 247, 0.15);
+    color: #d8b4fe;
+    border-color: rgba(168, 85, 247, 0.35);
+}
+
+.farm-table .boss-progress-bar-fill:not(.warning):not(.spawned),
+.boss-row.farm-row .boss-progress-bar-fill:not(.warning):not(.spawned) {
+    background: linear-gradient(90deg, #9333ea, #c084fc);
+}
+
+.boss-table-container.farm-table {
+    border-color: rgba(168, 85, 247, 0.3);
 }
 
 /* Boss Countdown Progress Bar */

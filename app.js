@@ -918,6 +918,7 @@ window.toggleFarmView = function () {
     const resetBossBtn = document.getElementById('reset-boss-btn');
     const addBossBtn = document.getElementById('add-boss-btn');
     const homeTitle = document.getElementById('home-title');
+    const homeTableContainer = document.getElementById('home-table-container');
     const invTableContainer = document.getElementById('inv-table-container');
     const mainContent = document.getElementById('main-content');
     const scheduleContent = document.getElementById('schedule-main-content');
@@ -934,6 +935,9 @@ window.toggleFarmView = function () {
     }
 
     if (isFarmView) {
+        if (homeTableContainer) {
+            homeTableContainer.classList.add('farm-table');
+        }
         if (toggleFarmBtn) {
             toggleFarmBtn.innerHTML = '🛡️ กลับหน้าหลัก';
             toggleFarmBtn.style.background = 'linear-gradient(135deg, #0ea5e9, #2563eb)';
@@ -947,9 +951,13 @@ window.toggleFarmView = function () {
 
         if (homeTitle) {
             homeTitle.innerHTML = '🌾 เซิร์ฟเวอร์ฟาร์ม (Farm Server)';
-            homeTitle.style.color = '#34d399';
+            homeTitle.style.color = '#c084fc';
+            homeTitle.style.borderBottomColor = 'rgba(168, 85, 247, 0.25)';
         }
     } else {
+        if (homeTableContainer) {
+            homeTableContainer.classList.remove('farm-table');
+        }
         if (toggleFarmBtn) {
             toggleFarmBtn.innerHTML = '🌾 เซิฟฟาม';
             toggleFarmBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
@@ -960,6 +968,7 @@ window.toggleFarmView = function () {
             homeTitle.innerHTML = `🛡️ เซิร์ฟเวอร์เรา (Home)
                 <button class="btn secondary action-cell" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); font-size: 0.85rem; padding: 5px 12px;" onclick="promptResetTime('home')">🔄 รีเซตเวลาบอส</button>`;
             homeTitle.style.color = '#fff';
+            homeTitle.style.borderBottomColor = 'rgba(255,255,255,0.1)';
         }
         if (isInvasionMode && invTableContainer) {
             invTableContainer.style.display = 'block';
@@ -1061,7 +1070,8 @@ function createBossRow(boss, index) {
     startOfNextHour.setHours(startOfNextHour.getHours() + 1);
 
     const isInHour = nextSpawnTime >= startOfHour.getTime() && nextSpawnTime < startOfNextHour.getTime();
-    tr.className = `boss-row${isInHour ? ' in-hour-highlight' : ''}`;
+    const isFarmBoss = boss.server_type === 'home_farm';
+    tr.className = `boss-row${isFarmBoss ? ' farm-row' : ''}${isInHour ? ' in-hour-highlight' : ''}`;
 
     const lastDeathTimeStr = (boss.last_death_time && boss.is_active) ? formatHHmm(boss.last_death_time) : '--:--';
     const updatedDateStr = (boss.last_death_time && boss.is_active) ? formatDate(boss.last_death_time) : '-';
@@ -2292,6 +2302,17 @@ window.toggleScheduleView = function () {
             if (toggleFarmBtn) {
                 toggleFarmBtn.innerHTML = '🌾 เซิฟฟาม';
                 toggleFarmBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+            }
+            const homeTableContainer = document.getElementById('home-table-container');
+            if (homeTableContainer) {
+                homeTableContainer.classList.remove('farm-table');
+            }
+            const homeTitle = document.getElementById('home-title');
+            if (homeTitle) {
+                homeTitle.innerHTML = `🛡️ เซิร์ฟเวอร์เรา (Home)
+                    <button class="btn secondary action-cell" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); font-size: 0.85rem; padding: 5px 12px;" onclick="promptResetTime('home')">🔄 รีเซตเวลาบอส</button>`;
+                homeTitle.style.color = '#fff';
+                homeTitle.style.borderBottomColor = 'rgba(255,255,255,0.1)';
             }
         }
         mainContent.style.display = 'none';
