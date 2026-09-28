@@ -904,7 +904,13 @@ setInterval(() => {
 async function autoCleanupOldLogs() {
     if (!supabaseClient || currentUserRole !== 'admin') return;
     try {
-        const cutoffTime = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const lastCleanup = parseInt(localStorage.getItem('last_log_auto_cleanup') || '0', 10);
+        const now = Date.now();
+        // ทำความสะอาดอย่างมากวันละ 1 ครั้งเท่านั้นเพื่อไม่ให้ยิงคำขอ DELETE บ่อยเกินไป
+        if (now - lastCleanup < 24 * 60 * 60 * 1000) return;
+        localStorage.setItem('last_log_auto_cleanup', String(now));
+
+        const cutoffTime = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
         await supabaseClient.from('boss_logs').delete().lt('created_at', cutoffTime);
     } catch (e) {
         // Silent background cleanup
@@ -1556,9 +1562,10 @@ window.handleNoTimeDeath = async function () {
     if (error) {
         swalDark.fire('Error', "Error resetting time: " + error.message, 'error');
     } else {
+        Object.assign(boss, payload);
+        scheduleRenderBosses();
         addLog("ClearTimer", boss.name, "ตั้งค่าไม่ระบุเวลา (--:--) (ข้ามเที่ยงคืน)", boss.server_type);
         closeModal('dead-modal');
-        fetchBosses();
     }
 };
 
@@ -1773,6 +1780,9 @@ async function handleSaveBoss(e) {
         if (error) {
             swalDark.fire('Error', "Error updating: " + error.message, 'error');
         } else {
+            const b = bosses.find(x => x.id === id);
+            if (b) Object.assign(b, payload);
+            scheduleRenderBosses();
             addLog("Edit", payload.name, logDetail, serverType);
         }
     } else {
@@ -1794,10 +1804,12 @@ async function handleSaveBoss(e) {
                 addLog("Add", payload.name, "เพิ่มบอสใหม่", serverType);
             }
         }
+        if (!getIsRealtimeConnected()) {
+            debouncedFetchBosses();
+        }
     }
 
     closeModal('boss-modal');
-    fetchBosses();
 }
 
 async function handleConfirmDeath(e) {
@@ -1834,6 +1846,8 @@ async function handleConfirmDeath(e) {
     if (error) {
         swalDark.fire('Error', "Error saving death time: " + error.message, 'error');
     } else {
+        Object.assign(boss, payload);
+        scheduleRenderBosses();
         const mmFormat = String(m).padStart(2, '0');
         const ddFormat = String(d).padStart(2, '0');
         const hhFormat = String(inputHours).padStart(2, '0');
@@ -1856,7 +1870,6 @@ async function handleConfirmDeath(e) {
     }
 
     closeModal('dead-modal');
-    fetchBosses();
 }
 
 window.skipSpawn = async function (id) {
@@ -1933,8 +1946,9 @@ window.skipSpawn = async function (id) {
         if (error) {
             swalDark.fire('Error', "Error resetting time: " + error.message, 'error');
         } else {
+            Object.assign(boss, payload);
+            scheduleRenderBosses();
             addLog("ClearTimer", boss.name, "ตั้งค่าไม่ระบุเวลา (--:--) (ข้ามเที่ยงคืน)", boss.server_type);
-            fetchBosses();
         }
         return;
     }
@@ -1951,6 +1965,8 @@ window.skipSpawn = async function (id) {
     if (error) {
         swalDark.fire('Error', "Error skipping spawn: " + error.message, 'error');
     } else {
+        Object.assign(boss, payload);
+        scheduleRenderBosses();
         let oldDeadStr = "ยังไม่ระบุ";
         if (boss.last_death_time) {
             const oldD = new Date(boss.last_death_time);
@@ -1971,7 +1987,6 @@ window.skipSpawn = async function (id) {
         const newDeadStr = `${nDD_dead}/${nMM_dead} ${nHH_dead}:${nMin_dead}`;
 
         addLog("Skip", boss.name, `บอสไม่เกิด 1 รอบ (เปลี่ยนเวลาตายจาก ${oldDeadStr} เป็น ${newDeadStr})`, boss.server_type);
-        fetchBosses();
     }
 }
 
@@ -1999,9 +2014,10 @@ window.deleteBoss = async function () {
     if (error) {
         swalDark.fire('Error', "Error deleting boss: " + error.message, 'error');
     } else {
+        bosses = bosses.filter(b => b.id !== id);
+        scheduleRenderBosses();
         addLog("Delete", boss.name, "ลบข้อมูลบอส");
         closeModal('boss-modal');
-        fetchBosses();
     }
 }
 
@@ -2177,8 +2193,14 @@ window.handleConfirmStep1 = async function (e) {
 
             if (error) throw error;
 
+            bosses.forEach(b => {
+                b.last_death_time = null;
+                b.next_spawn_time = null;
+                b.use_first_spawn = false;
+            });
+            scheduleRenderBosses();
+
             await addLog('ResetServer', 'ล้างเวลาทั้งหมด', 'ล้างเวลาเกิดและตายของบอสทั้งหมดเป็นค่าว่าง', 'home');
-            await fetchBosses();
             closeModal('reset-modal-step1');
 
             swalDark.fire({
@@ -2346,12 +2368,17 @@ window.handleConfirmFinalReset = async function(computedSpawns, actualStr) {
                     last_death_time: null
                 })
                 .eq('id', item.id);
+            const target = bosses.find(b => b.id === item.id);
+            if (target) {
+                target.next_spawn_time = item.nextSpawnISO;
+                target.use_first_spawn = item.useFirstSpawn;
+                target.last_death_time = null;
+            }
             updateCount++;
         }
+        scheduleRenderBosses();
 
         await addLog('ResetServer', 'คำนวณเวลาหลังเปิดเซิฟ', `เปิดจริง: ${actualStr} (อัปเดต ${updateCount} ตัว)`, 'home');
-
-        await fetchBosses();
 
         swalDark.fire({
             icon: 'success',
@@ -2787,10 +2814,15 @@ window.promptResetTime = async function (serverType) {
             if (updateError) {
                 swalDark.fire('เกิดข้อผิดพลาด', 'ไม่สามารถรีเซตเวลาบอสได้: ' + updateError.message, 'error');
             } else {
+                bosses.forEach(b => {
+                    if (b.server_type === serverType) {
+                        b.last_death_time = null;
+                        b.next_spawn_time = null;
+                    }
+                });
+                scheduleRenderBosses();
                 addLog('reset_world', 'All Bosses', `ล้างเวลาบอสทั้งหมดใน ${serverNameStr}`, serverType);
                 swalDark.fire('สำเร็จ', 'รีเซตเวลาบอสเรียบร้อยแล้ว', 'success');
-                // Realtime listener should pick up the changes, but we fetch manually just in case
-                fetchBosses();
             }
         } catch (err) {
             console.error('Reset error:', err);
