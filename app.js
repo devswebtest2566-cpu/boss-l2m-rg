@@ -667,7 +667,40 @@ async function addLog(actionType, bossName, details, serverContext = 'home') {
 let realtimeInitialized = false;
 let bossChannel = null;
 let scheduleChannel = null;
-let isRealtimeConnected = false;
+let isBossRealtimeConnected = false;
+let isScheduleRealtimeConnected = false;
+
+function getIsRealtimeConnected() {
+    return isBossRealtimeConnected && isScheduleRealtimeConnected;
+}
+
+// Debounced render helpers for smooth burst handling
+let renderBossesTimer = null;
+function scheduleRenderBosses() {
+    if (renderBossesTimer) cancelAnimationFrame(renderBossesTimer);
+    renderBossesTimer = requestAnimationFrame(() => {
+        renderBosses();
+        updateCountdowns();
+    });
+}
+
+let fetchBossesTimeout = null;
+function debouncedFetchBosses() {
+    if (fetchBossesTimeout) clearTimeout(fetchBossesTimeout);
+    fetchBossesTimeout = setTimeout(() => {
+        fetchBosses();
+    }, 2000);
+}
+
+let fetchScheduleTimeout = null;
+function debouncedFetchSchedule() {
+    if (fetchScheduleTimeout) clearTimeout(fetchScheduleTimeout);
+    fetchScheduleTimeout = setTimeout(() => {
+        if (typeof fetchScheduleEvents === 'function') {
+            fetchScheduleEvents();
+        }
+    }, 2000);
+}
 
 function initRealtime() {
     if (!supabaseClient) return;
@@ -680,36 +713,93 @@ function initRealtime() {
         try { supabaseClient.removeChannel(scheduleChannel); } catch (e) { }
     }
 
+    // 1. Bosses Realtime Channel
     bossChannel = supabaseClient
         .channel('public:bosses')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'bosses' }, payload => {
             console.log('[Realtime] Bosses updated:', payload.eventType);
             lastResyncTime = Date.now();
-            fetchBosses();
+
+            // Direct in-memory update: eliminates HTTP REST GET requests for 30-50 connected users
+            if (payload.eventType === 'INSERT' && payload.new) {
+                const idx = bosses.findIndex(b => b.id === payload.new.id);
+                if (idx !== -1) {
+                    bosses[idx] = payload.new;
+                } else {
+                    bosses.push(payload.new);
+                }
+                scheduleRenderBosses();
+            } else if (payload.eventType === 'UPDATE' && payload.new) {
+                const idx = bosses.findIndex(b => b.id === payload.new.id);
+                if (idx !== -1) {
+                    bosses[idx] = payload.new;
+                } else {
+                    bosses.push(payload.new);
+                }
+                scheduleRenderBosses();
+            } else if (payload.eventType === 'DELETE' && payload.old) {
+                bosses = bosses.filter(b => b.id !== payload.old.id);
+                scheduleRenderBosses();
+            } else {
+                // Fallback only if payload data is missing
+                debouncedFetchBosses();
+            }
         })
         .subscribe((status, err) => {
             if (status === 'SUBSCRIBED') {
-                isRealtimeConnected = true;
+                isBossRealtimeConnected = true;
                 console.log('[Realtime] Subscribed to bosses successfully');
             } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                isRealtimeConnected = false;
+                isBossRealtimeConnected = false;
                 console.warn('[Realtime] Bosses channel status:', status, err || '');
             }
         });
 
+    // 2. Schedule Events Realtime Channel
     scheduleChannel = supabaseClient
         .channel('public:schedule_events')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_events' }, payload => {
             console.log('[Realtime] Schedule updated:', payload.eventType);
             lastResyncTime = Date.now();
-            if (typeof fetchScheduleEvents === 'function') {
-                fetchScheduleEvents();
+
+            // Direct in-memory update for schedule events
+            if (payload.eventType === 'INSERT' && payload.new) {
+                const item = {
+                    id: payload.new.id,
+                    day: payload.new.day,
+                    time: payload.new.time,
+                    title: payload.new.title,
+                    isVisible: payload.new.is_visible
+                };
+                const idx = scheduleEvents.findIndex(e => e.id === item.id);
+                if (idx !== -1) scheduleEvents[idx] = item;
+                else scheduleEvents.push(item);
+                if (typeof renderSchedule === 'function') renderSchedule();
+            } else if (payload.eventType === 'UPDATE' && payload.new) {
+                const item = {
+                    id: payload.new.id,
+                    day: payload.new.day,
+                    time: payload.new.time,
+                    title: payload.new.title,
+                    isVisible: payload.new.is_visible
+                };
+                const idx = scheduleEvents.findIndex(e => e.id === item.id);
+                if (idx !== -1) scheduleEvents[idx] = item;
+                else scheduleEvents.push(item);
+                if (typeof renderSchedule === 'function') renderSchedule();
+            } else if (payload.eventType === 'DELETE' && payload.old) {
+                scheduleEvents = scheduleEvents.filter(e => e.id !== payload.old.id);
+                if (typeof renderSchedule === 'function') renderSchedule();
+            } else {
+                debouncedFetchSchedule();
             }
         })
         .subscribe((status, err) => {
             if (status === 'SUBSCRIBED') {
+                isScheduleRealtimeConnected = true;
                 console.log('[Realtime] Subscribed to schedule_events successfully');
             } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                isScheduleRealtimeConnected = false;
                 console.warn('[Realtime] Schedule channel status:', status, err || '');
             }
         });
@@ -717,14 +807,16 @@ function initRealtime() {
     realtimeInitialized = true;
 }
 
-// --- Smart Resync System (Instant Realtime + Wakeup Resync without Focus Flooding) ---
+// --- Smart Resync System (Throttled for 30-50+ concurrent users) ---
 let lastResyncTime = 0;
 let lastHiddenTime = 0;
-const RESYNC_DEBOUNCE_MS = 10000; // Debounce 10 seconds to prevent rapid query bursts
+const RESYNC_DEBOUNCE_MS = 30000; // Debounce 30 seconds minimum between full REST queries
 
 async function resyncAllData(force = false) {
     const now = Date.now();
-    if (!force && (now - lastResyncTime < RESYNC_DEBOUNCE_MS)) {
+    // Enforce 30s debounce (or at least 10s even if forced) to protect Supabase from request storms
+    const minDebounce = force ? 10000 : RESYNC_DEBOUNCE_MS;
+    if (now - lastResyncTime < minDebounce) {
         return;
     }
     lastResyncTime = now;
@@ -732,12 +824,12 @@ async function resyncAllData(force = false) {
     console.log('[Sync] Smart resyncing data...');
 
     try {
-        // 1. Fetch bosses immediately
+        // 1. Fetch bosses
         await fetchBosses();
 
-        // 2. Fetch schedule events if available
+        // 2. Fetch schedule events
         if (typeof fetchScheduleEvents === 'function') {
-            fetchScheduleEvents();
+            await fetchScheduleEvents();
         }
 
         // 3. Immediately refresh countdown displays
@@ -749,7 +841,7 @@ async function resyncAllData(force = false) {
         }
 
         // 5. Ensure Supabase realtime channels are alive / reconnect if dropped
-        if (supabaseClient && !isRealtimeConnected) {
+        if (supabaseClient && !getIsRealtimeConnected()) {
             console.log('[Realtime] Reconnecting channels after wake-up...');
             initRealtime();
         }
@@ -758,16 +850,21 @@ async function resyncAllData(force = false) {
     }
 }
 
-// Auto-resync ONLY when user actually resumes from sleep / hidden tab (> 10 seconds)
+// Auto-resync when returning to tab:
+// If Realtime WebSocket is healthy, it already received updates in background.
+// Only fetch via REST if tab was away for > 5 minutes OR Realtime is disconnected.
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
         lastHiddenTime = Date.now();
     } else if (document.visibilityState === 'visible') {
         const hiddenDuration = lastHiddenTime > 0 ? (Date.now() - lastHiddenTime) : 0;
-        // If tab was in background for over 10s or Realtime was disconnected, sync immediately
-        if (hiddenDuration > 10000 || !isRealtimeConnected) {
-            console.log(`[Sync] Resumed after ${Math.round(hiddenDuration / 1000)}s hidden. Syncing...`);
-            resyncAllData(true);
+        
+        // Refresh local countdown timer display immediately (no network call)
+        updateCountdowns();
+
+        if (hiddenDuration > 5 * 60 * 1000 || !getIsRealtimeConnected()) {
+            console.log(`[Sync] Resumed after ${Math.round(hiddenDuration / 1000)}s hidden (or Realtime offline). Checking sync...`);
+            resyncAllData(false);
         }
     }
 });
@@ -775,7 +872,7 @@ document.addEventListener('visibilitychange', () => {
 // Resync when page is restored from bfcache
 window.addEventListener('pageshow', (event) => {
     if (event.persisted) {
-        resyncAllData(true);
+        resyncAllData(false);
     }
 });
 
@@ -786,21 +883,33 @@ window.addEventListener('online', () => {
     resyncAllData(true);
 });
 
-// Fallback background polling (runs every 60s, ONLY when tab is visible and no update received in 45s)
+// Fallback background polling (Throttled):
+// - If Realtime WebSocket is connected: only do a light safety sync every 15 minutes.
+// - If Realtime is disconnected: poll every 60 seconds as a fallback until reconnected.
 setInterval(() => {
     if (document.visibilityState === 'visible') {
         const now = Date.now();
-        if (now - lastResyncTime >= 45000) {
-            fetchBosses();
-            if (typeof fetchScheduleEvents === 'function') {
-                fetchScheduleEvents();
-            }
-            lastResyncTime = now;
+        const isOnline = getIsRealtimeConnected();
+        const pollThreshold = isOnline ? (15 * 60 * 1000) : 60000;
+
+        if (now - lastResyncTime >= pollThreshold) {
+            console.log(`[Sync] Periodic fallback sync (Realtime connected: ${isOnline})...`);
+            resyncAllData(false);
         }
     }
 }, 60000);
 
 
+
+async function autoCleanupOldLogs() {
+    if (!supabaseClient || currentUserRole !== 'admin') return;
+    try {
+        const cutoffTime = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        await supabaseClient.from('boss_logs').delete().lt('created_at', cutoffTime);
+    } catch (e) {
+        // Silent background cleanup
+    }
+}
 
 function showDashboard() {
     const dashboard = document.getElementById('dashboard-screen');
@@ -816,6 +925,10 @@ function showDashboard() {
     }
     updateSoundBtnUI();
     initRealtime(); // เริ่มต้นระบบ Realtime
+
+    if (currentUserRole === 'admin') {
+        autoCleanupOldLogs();
+    }
 }
 
 let isViewerModeSimulated = false;
@@ -2552,9 +2665,6 @@ window.openScheduleModal = function (id = null) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Initial fetch
-    fetchScheduleEvents();
-
     const sForm = document.getElementById('schedule-form');
     if (sForm) {
         sForm.addEventListener('submit', async (e) => {
