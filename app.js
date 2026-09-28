@@ -667,6 +667,7 @@ async function addLog(actionType, bossName, details, serverContext = 'home') {
 let realtimeInitialized = false;
 let bossChannel = null;
 let scheduleChannel = null;
+let isRealtimeConnected = false;
 
 function initRealtime() {
     if (!supabaseClient) return;
@@ -682,35 +683,44 @@ function initRealtime() {
     bossChannel = supabaseClient
         .channel('public:bosses')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'bosses' }, payload => {
+            console.log('[Realtime] Bosses updated:', payload.eventType);
+            lastResyncTime = Date.now();
             fetchBosses();
         })
-        .subscribe((status) => {
+        .subscribe((status, err) => {
             if (status === 'SUBSCRIBED') {
-                console.log('[Realtime] Subscribed to bosses');
+                isRealtimeConnected = true;
+                console.log('[Realtime] Subscribed to bosses successfully');
             } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                console.warn('[Realtime] Bosses channel status:', status);
+                isRealtimeConnected = false;
+                console.warn('[Realtime] Bosses channel status:', status, err || '');
             }
         });
 
     scheduleChannel = supabaseClient
         .channel('public:schedule_events')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_events' }, payload => {
+            console.log('[Realtime] Schedule updated:', payload.eventType);
+            lastResyncTime = Date.now();
             if (typeof fetchScheduleEvents === 'function') {
                 fetchScheduleEvents();
             }
         })
-        .subscribe((status) => {
+        .subscribe((status, err) => {
             if (status === 'SUBSCRIBED') {
-                console.log('[Realtime] Subscribed to schedule_events');
+                console.log('[Realtime] Subscribed to schedule_events successfully');
+            } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                console.warn('[Realtime] Schedule channel status:', status, err || '');
             }
         });
 
     realtimeInitialized = true;
 }
 
-// --- Auto-Resync System (Tab Resume / Focus / Online / Active Polling) ---
+// --- Smart Resync System (Instant Realtime + Wakeup Resync without Focus Flooding) ---
 let lastResyncTime = 0;
-const RESYNC_DEBOUNCE_MS = 4000; // Debounce to prevent multiple queries within 4 seconds
+let lastHiddenTime = 0;
+const RESYNC_DEBOUNCE_MS = 10000; // Debounce 10 seconds to prevent rapid query bursts
 
 async function resyncAllData(force = false) {
     const now = Date.now();
@@ -719,7 +729,7 @@ async function resyncAllData(force = false) {
     }
     lastResyncTime = now;
 
-    console.log('[Sync] Resyncing data on tab wake-up / focus...');
+    console.log('[Sync] Smart resyncing data...');
 
     try {
         // 1. Fetch bosses immediately
@@ -733,48 +743,54 @@ async function resyncAllData(force = false) {
         // 3. Immediately refresh countdown displays
         updateCountdowns();
 
-        // 4. Resync server time if older than 2 minutes
-        if (!timeSyncStatus.lastSyncTime || (now - timeSyncStatus.lastSyncTime > 2 * 60 * 1000)) {
+        // 4. Resync server time if older than 5 minutes
+        if (!timeSyncStatus.lastSyncTime || (now - timeSyncStatus.lastSyncTime > 5 * 60 * 1000)) {
             syncTimeWithServer(false);
         }
 
         // 5. Ensure Supabase realtime channels are alive / reconnect if dropped
-        if (supabaseClient) {
-            if (!bossChannel || bossChannel.state === 'closed' || bossChannel.state === 'errored') {
-                console.log('[Realtime] Re-subscribing channels after sleep/wake...');
-                initRealtime();
-            }
+        if (supabaseClient && !isRealtimeConnected) {
+            console.log('[Realtime] Reconnecting channels after wake-up...');
+            initRealtime();
         }
     } catch (e) {
         console.error('[Sync] Error during resyncAllData:', e);
     }
 }
 
-// Auto-resync when user switches tab or unlocks/opens device
+// Auto-resync ONLY when user actually resumes from sleep / hidden tab (> 10 seconds)
 document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-        resyncAllData();
+    if (document.visibilityState === 'hidden') {
+        lastHiddenTime = Date.now();
+    } else if (document.visibilityState === 'visible') {
+        const hiddenDuration = lastHiddenTime > 0 ? (Date.now() - lastHiddenTime) : 0;
+        // If tab was in background for over 10s or Realtime was disconnected, sync immediately
+        if (hiddenDuration > 10000 || !isRealtimeConnected) {
+            console.log(`[Sync] Resumed after ${Math.round(hiddenDuration / 1000)}s hidden. Syncing...`);
+            resyncAllData(true);
+        }
     }
 });
 
-window.addEventListener('focus', () => {
-    resyncAllData();
+// Resync when page is restored from bfcache
+window.addEventListener('pageshow', (event) => {
+    if (event.persisted) {
+        resyncAllData(true);
+    }
 });
 
-window.addEventListener('pageshow', () => {
-    resyncAllData();
-});
-
+// Resync and reconnect realtime when network reconnects
 window.addEventListener('online', () => {
     console.log('[Network] Network reconnected, forcing full resync...');
+    initRealtime();
     resyncAllData(true);
 });
 
-// Fallback background polling (runs every 30 seconds, ONLY when tab is visible)
+// Fallback background polling (runs every 60s, ONLY when tab is visible and no update received in 45s)
 setInterval(() => {
     if (document.visibilityState === 'visible') {
         const now = Date.now();
-        if (now - lastResyncTime >= 25000) {
+        if (now - lastResyncTime >= 45000) {
             fetchBosses();
             if (typeof fetchScheduleEvents === 'function') {
                 fetchScheduleEvents();
@@ -782,7 +798,8 @@ setInterval(() => {
             lastResyncTime = now;
         }
     }
-}, 30000);
+}, 60000);
+
 
 
 function showDashboard() {
