@@ -1069,10 +1069,12 @@ window.toggleFarmView = function () {
         if (invTableContainer) invTableContainer.style.display = 'none';
 
         if (homeTitle) {
-            homeTitle.innerHTML = '🌾 เซิร์ฟเวอร์ฟาร์ม (Farm Server)';
+            homeTitle.innerHTML = `🌾 เซิร์ฟเวอร์ฟาร์ม (Farm Server)
+                <button class="btn action-cell farm-reset-btn" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); font-size: 0.85rem; padding: 5px 12px; background: linear-gradient(135deg, #a855f7, #7c3aed); color: #fff; border: 1px solid rgba(168, 85, 247, 0.4); border-radius: 6px; cursor: pointer; box-shadow: 0 2px 8px rgba(168, 85, 247, 0.3);" onclick="promptResetTime('home_farm')">🔄 รีเซตเวลาบอส</button>`;
             homeTitle.style.color = '#c084fc';
             homeTitle.style.borderBottomColor = 'rgba(168, 85, 247, 0.25)';
         }
+        applyRoleUI();
     } else {
         if (homeTableContainer) {
             homeTableContainer.classList.remove('farm-table');
@@ -2072,6 +2074,7 @@ async function loadBossLogs() {
         if (actionLabel === 'Add') { actionLabel = 'เพิ่ม'; actionColor = '#22c55e'; }
         if (actionLabel === 'Edit') { actionLabel = 'แก้ไข'; actionColor = '#eab308'; }
         if (actionLabel === 'Delete') { actionLabel = 'ลบ'; actionColor = '#ef4444'; }
+        if (actionLabel === 'reset_world' || actionLabel === 'ResetServer') { actionLabel = 'รีเซ็ต'; actionColor = '#f59e0b'; }
 
         let serverBadge = '';
         if (log.server_context === 'invasion') {
@@ -2241,9 +2244,11 @@ window.handleConfirmStep2 = async function (e) {
     let targetBosses = bosses.filter(b => b.is_active && !b.last_death_time);
     
     if (scope === 'home') {
-        targetBosses = targetBosses.filter(b => b.server_type !== 'invasion');
+        targetBosses = targetBosses.filter(b => b.server_type !== 'invasion' && b.server_type !== 'home_farm');
     } else if (scope === 'invasion') {
         targetBosses = targetBosses.filter(b => b.server_type === 'invasion');
+    } else if (scope === 'farm') {
+        targetBosses = targetBosses.filter(b => b.server_type === 'home_farm');
     }
     
     if (targetBosses.length === 0) {
@@ -2293,8 +2298,9 @@ window.handleConfirmStep2 = async function (e) {
     computedSpawns.sort((a, b) => a.nextSpawnDate.getTime() - b.nextSpawnDate.getTime());
 
     // Generate HTML for Popup 3
-    const homeSpawns = computedSpawns.filter(s => s.server_type !== 'invasion');
+    const homeSpawns = computedSpawns.filter(s => s.server_type !== 'invasion' && s.server_type !== 'home_farm');
     const invSpawns = computedSpawns.filter(s => s.server_type === 'invasion');
+    const farmSpawns = computedSpawns.filter(s => s.server_type === 'home_farm');
 
     let htmlContent = `<div style="max-height: 300px; overflow-y: auto; text-align: left; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; font-size: 0.9rem;">`;
 
@@ -2308,6 +2314,21 @@ window.handleConfirmStep2 = async function (e) {
                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
                     <td style="padding: 4px; color: #fff;">${item.name}</td>
                     <td style="padding: 4px; text-align: right; color: #00f2fe;">${item.displayTime}</td>
+                </tr>`;
+        });
+        htmlContent += `</tbody></table></div>`;
+    }
+
+    if (farmSpawns.length > 0) {
+        htmlContent += `<div style="margin-bottom: 10px;">
+            <div style="color: #c084fc; font-weight: bold; border-bottom: 1px solid rgba(168, 85, 247, 0.3); padding-bottom: 4px; margin-bottom: 4px; margin-top: 10px;">🌾 เซิร์ฟเวอร์ฟาร์ม (Farm Server)</div>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tbody>`;
+        farmSpawns.forEach(item => {
+            htmlContent += `
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 4px; color: #fff;">${item.name}</td>
+                    <td style="padding: 4px; text-align: right; color: #c084fc;">${item.displayTime}</td>
                 </tr>`;
         });
         htmlContent += `</tbody></table></div>`;
@@ -2767,8 +2788,15 @@ window.promptResetTime = async function (serverType) {
         return;
     }
 
-    const serverNameStr = serverType === 'home' ? 'เซิร์ฟเวอร์เรา (Home)' : 'เซิร์ฟศัตรู (Invasion)';
-    const configKey = serverType === 'home' ? 'reset_password_home' : 'reset_password_invasion';
+    let serverNameStr = 'เซิร์ฟเวอร์เรา (Home)';
+    let configKey = 'reset_password_home';
+    if (serverType === 'home_farm') {
+        serverNameStr = 'เซิร์ฟเวอร์ฟาร์ม (Farm Server)';
+        configKey = 'reset_password_farm';
+    } else if (serverType === 'invasion') {
+        serverNameStr = 'เซิร์ฟศัตรู (Invasion)';
+        configKey = 'reset_password_invasion';
+    }
 
     const { value: password } = await swalDark.fire({
         title: `รีเซตเวลาบอส ${serverNameStr}`,
@@ -2789,11 +2817,24 @@ window.promptResetTime = async function (serverType) {
     if (password) {
         try {
             // Check password from database
-            const { data: configData, error: configError } = await supabaseClient
+            let { data: configData, error: configError } = await supabaseClient
                 .from('system_config')
                 .select('config_value')
                 .eq('config_name', configKey)
-                .single();
+                .maybeSingle();
+
+            // Fallback for farm server if reset_password_farm is not yet created in system_config
+            if ((configError || !configData) && serverType === 'home_farm') {
+                const { data: fallbackData, error: fallbackError } = await supabaseClient
+                    .from('system_config')
+                    .select('config_value')
+                    .eq('config_name', 'reset_password_home')
+                    .maybeSingle();
+                if (!fallbackError && fallbackData) {
+                    configData = fallbackData;
+                    configError = null;
+                }
+            }
 
             if (configError || !configData) {
                 swalDark.fire('เกิดข้อผิดพลาด', 'ไม่พบการตั้งค่ารหัสผ่านในระบบ กรุณาตรวจสอบฐานข้อมูล', 'error');
