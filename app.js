@@ -8,6 +8,11 @@ if (SUPABASE_URL !== 'YOUR_SUPABASE_URL_HERE') {
 }
 
 let currentUserRole = 'viewer';
+let currentUserEmail = '';
+
+function isFarmViewerOnly() {
+    return (currentUserEmail || '').trim().toLowerCase() === 'viewer@rg2.com';
+}
 
 // --- Time Synchronization System ---
 let serverTimeOffset = 0;
@@ -278,31 +283,41 @@ function checkAutoInvasionSchedule() {
     return isTargetDay && isTargetTime;
 }
 
-window.toggleInvasionMode = function () {
-    isInvasionMode = !isInvasionMode;
+function setInvasionMode(enable, shouldRender = true) {
+    if (isFarmViewerOnly()) {
+        isInvasionMode = false;
+        enable = false;
+    } else {
+        isInvasionMode = enable;
+    }
     const body = document.body;
-    const homeContainer = document.getElementById('home-table-container');
     const invContainer = document.getElementById('inv-table-container');
-    const homeTitle = document.getElementById('home-title');
     const invBtn = document.getElementById('invasion-btn');
 
     if (isInvasionMode) {
-        body.classList.add('invasion-active');
+        if (body) body.classList.add('invasion-active');
         if (invContainer) invContainer.style.display = 'block';
         if (invBtn) {
             invBtn.style.background = '#ef4444';
             invBtn.style.color = '#fff';
         }
     } else {
-        body.classList.remove('invasion-active');
+        if (body) body.classList.remove('invasion-active');
         if (invContainer) invContainer.style.display = 'none';
         if (invBtn) {
             invBtn.style.background = 'transparent';
             invBtn.style.color = '#ef4444';
         }
     }
-    renderBosses();
+    if (shouldRender) {
+        renderBosses();
+    }
 }
+
+window.toggleInvasionMode = function () {
+    if (isFarmViewerOnly()) return;
+    setInvasionMode(!isInvasionMode, true);
+};
 
 // --- DOM Elements ---
 const swalDark = Swal.mixin({
@@ -387,9 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(() => syncTimeWithServer(false), 5 * 60 * 1000);
 
     lastAutoPeriodState = checkAutoInvasionSchedule();
-    if (lastAutoPeriodState && !isInvasionMode) {
-        window.toggleInvasionMode();
-    }
+    setInvasionMode(lastAutoPeriodState, false);
 
     setupTimeAutoFormat('dead-time');
     setupTimeAutoFormat('schedule-time');
@@ -531,8 +544,14 @@ async function checkAuth() {
             return;
         }
 
-        if (session) {
-            currentUserRole = (session.user.email === 'clan@revengers.com') ? 'admin' : 'viewer';
+        if (session && session.user) {
+            currentUserEmail = (session.user.email || '').trim().toLowerCase();
+            currentUserRole = (currentUserEmail === 'clan@revengers.com') ? 'admin' : 'viewer';
+
+            if (isFarmViewerOnly()) {
+                isFarmView = true;
+            }
+
             applyRoleUI();
 
             if (currentUserRole === 'admin') {
@@ -545,6 +564,12 @@ async function checkAuth() {
             } else {
                 showDashboard();
             }
+        } else if (sessionStorage.getItem('farm_viewer_auth') === '1') {
+            currentUserEmail = 'viewer@rg2.com';
+            currentUserRole = 'viewer';
+            isFarmView = true;
+            applyRoleUI();
+            showDashboard();
         } else {
             promptForPin();
         }
@@ -573,35 +598,69 @@ function promptForPin() {
                 return false;
             }
             try {
+                // 1. Try Admin (clan@revengers.com)
                 let { data, error } = await supabaseClient.auth.signInWithPassword({
                     email: 'clan@revengers.com',
                     password: pin
                 });
 
+                // 2. Try Farm Viewer (viewer@rg2.com)
+                let rg2Error = null;
                 if (error) {
-                    // Try Viewer role if Admin fails
+                    const rg2Attempt = await supabaseClient.auth.signInWithPassword({
+                        email: 'viewer@rg2.com',
+                        password: pin
+                    });
+
+                    if (!rg2Attempt.error) {
+                        data = rg2Attempt.data;
+                        error = null;
+                    } else if (rg2Attempt.error.message && rg2Attempt.error.message.toLowerCase().includes('confirm')) {
+                        // Supabase validated the password, but email unconfirmed -> allow login
+                        sessionStorage.setItem('farm_viewer_auth', '1');
+                        data = { user: { email: 'viewer@rg2.com' } };
+                        error = null;
+                    } else {
+                        rg2Error = rg2Attempt.error;
+                    }
+                }
+
+                // 3. Try General Viewer (viewer@revengers.com)
+                let viewerError = null;
+                if (error) {
                     const viewerAttempt = await supabaseClient.auth.signInWithPassword({
                         email: 'viewer@revengers.com',
                         password: pin
                     });
 
-                    if (viewerAttempt.error) {
-                        Swal.showValidationMessage(`รหัสไม่ถูกต้อง (Admin: ${error.message}, Viewer: ${viewerAttempt.error.message})`);
-                        return false;
+                    if (!viewerAttempt.error) {
+                        data = viewerAttempt.data;
+                        error = null;
+                    } else {
+                        viewerError = viewerAttempt.error;
                     }
-                    data = viewerAttempt.data;
+                }
+
+                if (error) {
+                    Swal.showValidationMessage(`รหัสไม่ถูกต้อง (Admin: ${error.message}, RG2: ${rg2Error?.message || '-'}, Viewer: ${viewerError?.message || '-'})`);
+                    return false;
                 }
 
                 return data;
-            } catch (error) {
-                Swal.showValidationMessage(`เกิดข้อผิดพลาด: ${error}`);
+            } catch (err) {
+                Swal.showValidationMessage(`เกิดข้อผิดพลาด: ${err.message || err}`);
                 return false;
             }
         }
     }).then((result) => {
         if (result.isConfirmed) {
-            const userEmail = result.value.user?.email;
-            currentUserRole = (userEmail === 'clan@revengers.com') ? 'admin' : 'viewer';
+            currentUserEmail = (result.value?.user?.email || '').trim().toLowerCase();
+            currentUserRole = (currentUserEmail === 'clan@revengers.com') ? 'admin' : 'viewer';
+
+            if (isFarmViewerOnly()) {
+                isFarmView = true;
+            }
+
             applyRoleUI();
 
             swalDark.fire({
@@ -925,6 +984,19 @@ function showDashboard() {
             dashboard.style.opacity = '1';
         }, 50);
     }
+
+    if (isFarmViewerOnly()) {
+        isFarmView = true;
+        isScheduleView = false;
+        setInvasionMode(false, false);
+    } else {
+        isFarmView = false;
+        isScheduleView = false;
+        const autoInv = checkAutoInvasionSchedule();
+        setInvasionMode(autoInv, false);
+    }
+
+    applyRoleUI();
     fetchBosses();
     if (typeof fetchScheduleEvents === 'function') {
         fetchScheduleEvents();
@@ -940,6 +1012,7 @@ function showDashboard() {
 let isViewerModeSimulated = false;
 
 window.toggleViewerMode = function() {
+    if (isFarmViewerOnly()) return;
     isViewerModeSimulated = !isViewerModeSimulated;
     const btn = document.getElementById('toggle-viewer-mode-btn');
     if (btn) {
@@ -964,6 +1037,50 @@ function applyRoleUI() {
     const resetBtn = document.getElementById('reset-boss-btn');
     const addScheduleBtn = document.getElementById('add-schedule-btn');
     const toggleViewerBtn = document.getElementById('toggle-viewer-mode-btn');
+    const toggleFarmBtn = document.getElementById('toggle-farm-btn');
+    const toggleScheduleBtn = document.getElementById('toggle-schedule-btn');
+    const invasionBtn = document.getElementById('invasion-btn');
+    const homeTitle = document.getElementById('home-title');
+    const homeTableContainer = document.getElementById('home-table-container');
+    const invTableContainer = document.getElementById('inv-table-container');
+    const scheduleContent = document.getElementById('schedule-main-content');
+    const mainContent = document.getElementById('main-content');
+
+    if (isFarmViewerOnly()) {
+        isFarmView = true;
+        isScheduleView = false;
+        setInvasionMode(false, false);
+
+        if (mainContent) mainContent.style.display = 'block';
+        if (scheduleContent) scheduleContent.style.display = 'none';
+
+        if (toggleFarmBtn) toggleFarmBtn.style.display = 'none';
+        if (toggleScheduleBtn) toggleScheduleBtn.style.display = 'none';
+        if (invasionBtn) invasionBtn.style.display = 'none';
+        if (addBtn) addBtn.style.display = 'none';
+        if (logBtn) logBtn.style.display = 'none';
+        if (resetBtn) resetBtn.style.display = 'none';
+        if (addScheduleBtn) addScheduleBtn.style.display = 'none';
+        if (toggleViewerBtn) toggleViewerBtn.style.display = 'none';
+
+        if (homeTableContainer) {
+            homeTableContainer.classList.add('farm-table');
+        }
+        if (homeTitle) {
+            homeTitle.innerHTML = `🌾 เซิร์ฟเวอร์ฟาร์ม (Farm Server)`;
+            homeTitle.style.color = '#c084fc';
+            homeTitle.style.borderBottomColor = 'rgba(168, 85, 247, 0.25)';
+        }
+
+        let styleEl = document.getElementById('viewer-style');
+        if (!styleEl) {
+            styleEl = document.createElement('style');
+            styleEl.id = 'viewer-style';
+            document.head.appendChild(styleEl);
+        }
+        styleEl.textContent = '.col-action, .action-cell { display: none !important; }';
+        return;
+    }
 
     if (toggleViewerBtn) {
         toggleViewerBtn.style.display = currentUserRole === 'admin' ? 'inline-block' : 'none';
@@ -996,11 +1113,50 @@ function applyRoleUI() {
         let styleEl = document.getElementById('viewer-style');
         if (styleEl) styleEl.remove();
     }
+
+    if (!isFarmView) {
+        if (toggleFarmBtn) {
+            toggleFarmBtn.style.display = 'inline-flex';
+            toggleFarmBtn.innerHTML = '🌾 เซิฟฟาม';
+            toggleFarmBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+        }
+        if (!isScheduleView) {
+            if (toggleScheduleBtn) toggleScheduleBtn.style.display = 'inline-flex';
+            if (invasionBtn) invasionBtn.style.display = 'inline-flex';
+        }
+        if (homeTableContainer) {
+            homeTableContainer.classList.remove('farm-table');
+        }
+        if (homeTitle) {
+            homeTitle.innerHTML = `🛡️ เซิร์ฟเวอร์เรา (Home)
+                <button class="btn secondary action-cell" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); font-size: 0.85rem; padding: 5px 12px;" onclick="promptResetTime('home')">🔄 รีเซตเวลาบอส</button>`;
+            homeTitle.style.color = '#fff';
+            homeTitle.style.borderBottomColor = 'rgba(255,255,255,0.1)';
+        }
+        if (isInvasionMode && invTableContainer) {
+            invTableContainer.style.display = 'block';
+        }
+    } else {
+        if (toggleFarmBtn) {
+            toggleFarmBtn.style.display = 'inline-flex';
+            toggleFarmBtn.innerHTML = '🛡️ กลับหน้าหลัก';
+            toggleFarmBtn.style.background = 'linear-gradient(135deg, #0ea5e9, #2563eb)';
+        }
+        if (toggleScheduleBtn) toggleScheduleBtn.style.display = 'none';
+        if (invasionBtn) invasionBtn.style.display = 'none';
+    }
 }
 
 window.logout = async function () {
     if (!supabaseClient) return;
     await supabaseClient.auth.signOut();
+    currentUserEmail = '';
+    currentUserRole = 'viewer';
+    isFarmView = false;
+    isScheduleView = false;
+    isViewerModeSimulated = false;
+    setInvasionMode(false, false);
+    sessionStorage.removeItem('farm_viewer_auth');
     localStorage.removeItem('editor_name');
     sessionStorage.removeItem('access_logged');
     const dashboard = document.getElementById('dashboard-screen');
@@ -1030,6 +1186,7 @@ async function fetchBosses() {
 // --- Farm Server View Logic ---
 let isFarmView = false;
 window.toggleFarmView = function () {
+    if (isFarmViewerOnly()) return;
     isFarmView = !isFarmView;
     const toggleFarmBtn = document.getElementById('toggle-farm-btn');
     const toggleScheduleBtn = document.getElementById('toggle-schedule-btn');
@@ -1139,7 +1296,7 @@ function renderBosses() {
 
         if (farmBosses.length === 0) {
             const emptyRow = document.createElement('tr');
-            emptyRow.innerHTML = `<td colspan="8" style="text-align:center;padding:2rem;color:#94a3b8;">ยังไม่มีข้อมูลบอสเซิฟฟาม (server_type = 'home_farm')</td>`;
+            emptyRow.innerHTML = `<td colspan="8" style="text-align:center;padding:2rem;color:#94a3b8;">${searchQuery ? 'ไม่พบข้อมูลบอสที่ค้นหา' : 'ยังไม่มีข้อมูลบอสเซิฟฟาม (Farm Server)'}</td>`;
             bossTableBody.appendChild(emptyRow);
         }
 
@@ -1333,15 +1490,11 @@ function updateCountdowns() {
 
     const now = getNow();
 
-    if (!isFarmView) {
+    if (!isFarmView && !isFarmViewerOnly()) {
         const currentPeriodState = checkAutoInvasionSchedule();
         if (currentPeriodState !== lastAutoPeriodState) {
             lastAutoPeriodState = currentPeriodState;
-            if (currentPeriodState && !isInvasionMode) {
-                window.toggleInvasionMode();
-            } else if (!currentPeriodState && isInvasionMode) {
-                window.toggleInvasionMode();
-            }
+            setInvasionMode(currentPeriodState, true);
         }
     }
 
@@ -1578,6 +1731,7 @@ if (deadTimeInput) deadTimeInput.addEventListener('input', updateSpawnPreview);
 if (deadDateInput) deadDateInput.addEventListener('input', updateSpawnPreview);
 
 window.openDeadModal = async function (id) {
+    if (currentUserRole === 'viewer') return;
     const boss = bosses.find(b => b.id === id);
     if (!boss) return;
 
@@ -1875,7 +2029,7 @@ async function handleConfirmDeath(e) {
 }
 
 window.skipSpawn = async function (id) {
-    if (!supabaseClient) return;
+    if (!supabaseClient || currentUserRole === 'viewer') return;
 
     const boss = bosses.find(b => b.id === id);
     if (!boss) return;
@@ -2449,6 +2603,7 @@ document.addEventListener('keydown', (e) => {
 // --- Schedule Logic ---
 let isScheduleView = false;
 window.toggleScheduleView = function () {
+    if (isFarmViewerOnly()) return;
     isScheduleView = !isScheduleView;
     const mainContent = document.getElementById('main-content');
     const scheduleContent = document.getElementById('schedule-main-content');
@@ -2894,6 +3049,19 @@ window.openScreenshotModal = function() {
 
     // Create sections (Home is expanded by default, Farm & Invasion are collapsed)
     const sections = [];
+
+    // If viewer@rg2.com, only show Farm Server
+    if (isFarmViewerOnly()) {
+        if (farmBosses.length > 0) {
+            const farmSection = createScreenshotSection('🌾 เซิร์ฟเวอร์ฟาร์ม (Farm)', '#10b981', farmBosses, true, sections);
+            sections.push(farmSection);
+            content.appendChild(farmSection.element);
+        } else {
+            content.innerHTML = '<div style="text-align:center; padding: 20px; color: #94a3b8;">ไม่มีบอสเซิร์ฟฟาร์มที่เปิดใช้งานอยู่</div>';
+        }
+        openModal('screenshot-modal');
+        return;
+    }
     
     if (homeBosses.length > 0) {
         const homeSection = createScreenshotSection('🛡️ เซิร์ฟเวอร์เรา (Home)', '#0ea5e9', homeBosses, true, sections);
