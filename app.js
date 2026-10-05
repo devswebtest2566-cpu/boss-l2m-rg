@@ -283,13 +283,24 @@ function checkAutoInvasionSchedule() {
     return isTargetDay && isTargetTime;
 }
 
-function setInvasionMode(enable, shouldRender = true) {
-    if (isFarmViewerOnly()) {
-        isInvasionMode = false;
-        enable = false;
+function updateInvTitle() {
+    const invTitle = document.getElementById('inv-title');
+    if (!invTitle) return;
+    if (isFarmView) {
+        invTitle.innerHTML = `⚔️ บอสศัตรู ฟาร์ม (Invasion Farm)
+            <button class="btn action-cell"
+                style="background: #ef4444; color: #fff; position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); font-size: 0.85rem; padding: 5px 12px;"
+                onclick="promptResetTime('invasion_farm')">🔄 รีเซตเวลาบอส</button>`;
     } else {
-        isInvasionMode = enable;
+        invTitle.innerHTML = `⚔️ เซิร์ฟศัตรู (Invasion)
+            <button class="btn action-cell"
+                style="background: #ef4444; color: #fff; position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); font-size: 0.85rem; padding: 5px 12px;"
+                onclick="promptResetTime('invasion')">🔄 รีเซตเวลาบอส</button>`;
     }
+}
+
+function setInvasionMode(enable, shouldRender = true) {
+    isInvasionMode = enable;
     const body = document.body;
     const invContainer = document.getElementById('inv-table-container');
     const invBtn = document.getElementById('invasion-btn');
@@ -309,13 +320,13 @@ function setInvasionMode(enable, shouldRender = true) {
             invBtn.style.color = '#ef4444';
         }
     }
+    updateInvTitle();
     if (shouldRender) {
         renderBosses();
     }
 }
 
 window.toggleInvasionMode = function () {
-    if (isFarmViewerOnly()) return;
     setInvasionMode(!isInvasionMode, true);
 };
 
@@ -348,15 +359,15 @@ function setupTimeAutoFormat(inputId) {
         let cursor = e.target.selectionStart;
         let val = e.target.value;
         let parts = val.split(':');
-        
+
         let hh = '', mm = '';
         if (parts.length > 1) {
             hh = parts[0].replace(/\D/g, '').slice(0, 2);
             mm = parts[1].replace(/\D/g, '').slice(0, 2);
-            
+
             if (hh.length === 2 && parseInt(hh, 10) > 23) hh = '23';
             if (mm.length === 2 && parseInt(mm, 10) > 59) mm = '59';
-            
+
             e.target.value = `${hh}:${mm}`;
         } else {
             let digits = val.replace(/\D/g, '');
@@ -418,6 +429,23 @@ document.addEventListener('DOMContentLoaded', () => {
             if (delBtn) delBtn.style.display = 'none';
             const previewContainer = document.getElementById('boss-reg-preview');
             if (previewContainer) previewContainer.style.display = 'none';
+
+            if (isFarmView) {
+                if (isInvasionMode) {
+                    const invFarmRadio = document.getElementById('boss-server-inv-farm');
+                    if (invFarmRadio) invFarmRadio.checked = true;
+                } else {
+                    const farmRadio = document.getElementById('boss-server-farm');
+                    if (farmRadio) farmRadio.checked = true;
+                }
+            } else if (isInvasionMode) {
+                const invRadio = document.getElementById('boss-server-inv');
+                if (invRadio) invRadio.checked = true;
+            } else {
+                const homeRadio = document.getElementById('boss-server-home');
+                if (homeRadio) homeRadio.checked = true;
+            }
+
             openModal('boss-modal');
         });
     }
@@ -500,7 +528,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Step 1 logic removed
-    
+
     const resetStep2Form = document.getElementById('reset-step2-form');
     if (resetStep2Form) {
         resetStep2Form.addEventListener('submit', handleConfirmStep2);
@@ -917,7 +945,7 @@ document.addEventListener('visibilitychange', () => {
         lastHiddenTime = Date.now();
     } else if (document.visibilityState === 'visible') {
         const hiddenDuration = lastHiddenTime > 0 ? (Date.now() - lastHiddenTime) : 0;
-        
+
         // Refresh local countdown timer display immediately (no network call)
         updateCountdowns();
 
@@ -988,7 +1016,8 @@ function showDashboard() {
     if (isFarmViewerOnly()) {
         isFarmView = true;
         isScheduleView = false;
-        setInvasionMode(false, false);
+        const autoInv = checkAutoInvasionSchedule();
+        setInvasionMode(autoInv, false);
     } else {
         isFarmView = false;
         isScheduleView = false;
@@ -1011,7 +1040,7 @@ function showDashboard() {
 
 let isViewerModeSimulated = false;
 
-window.toggleViewerMode = function() {
+window.toggleViewerMode = function () {
     if (isFarmViewerOnly()) return;
     isViewerModeSimulated = !isViewerModeSimulated;
     const btn = document.getElementById('toggle-viewer-mode-btn');
@@ -1049,14 +1078,13 @@ function applyRoleUI() {
     if (isFarmViewerOnly()) {
         isFarmView = true;
         isScheduleView = false;
-        setInvasionMode(false, false);
 
         if (mainContent) mainContent.style.display = 'block';
         if (scheduleContent) scheduleContent.style.display = 'none';
 
         if (toggleFarmBtn) toggleFarmBtn.style.display = 'none';
         if (toggleScheduleBtn) toggleScheduleBtn.style.display = 'none';
-        if (invasionBtn) invasionBtn.style.display = 'none';
+        if (invasionBtn) invasionBtn.style.display = 'inline-flex';
         if (addBtn) addBtn.style.display = 'none';
         if (logBtn) logBtn.style.display = 'none';
         if (resetBtn) resetBtn.style.display = 'none';
@@ -1071,6 +1099,12 @@ function applyRoleUI() {
             homeTitle.style.color = '#c084fc';
             homeTitle.style.borderBottomColor = 'rgba(168, 85, 247, 0.25)';
         }
+        if (isInvasionMode && invTableContainer) {
+            invTableContainer.style.display = 'block';
+        } else if (invTableContainer) {
+            invTableContainer.style.display = 'none';
+        }
+        updateInvTitle();
 
         let styleEl = document.getElementById('viewer-style');
         if (!styleEl) {
@@ -1143,8 +1177,21 @@ function applyRoleUI() {
             toggleFarmBtn.style.background = 'linear-gradient(135deg, #0ea5e9, #2563eb)';
         }
         if (toggleScheduleBtn) toggleScheduleBtn.style.display = 'none';
-        if (invasionBtn) invasionBtn.style.display = 'none';
+        if (invasionBtn) invasionBtn.style.display = 'inline-flex';
+        if (homeTableContainer) {
+            homeTableContainer.classList.add('farm-table');
+        }
+        if (homeTitle) {
+            homeTitle.innerHTML = `🌾 เซิร์ฟเวอร์ฟาร์ม (Farm Server)
+                <button class="btn action-cell farm-reset-btn" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); font-size: 0.85rem; padding: 5px 12px; background: linear-gradient(135deg, #a855f7, #7c3aed); color: #fff; border: 1px solid rgba(168, 85, 247, 0.4); border-radius: 6px; cursor: pointer; box-shadow: 0 2px 8px rgba(168, 85, 247, 0.3);" onclick="promptResetTime('home_farm')">🔄 รีเซตเวลาบอส</button>`;
+            homeTitle.style.color = '#c084fc';
+            homeTitle.style.borderBottomColor = 'rgba(168, 85, 247, 0.25)';
+        }
+        if (isInvasionMode && invTableContainer) {
+            invTableContainer.style.display = 'block';
+        }
     }
+    updateInvTitle();
 }
 
 window.logout = async function () {
@@ -1220,10 +1267,10 @@ window.toggleFarmView = function () {
         }
         // Hide other buttons on Farm view as requested
         if (toggleScheduleBtn) toggleScheduleBtn.style.display = 'none';
-        if (invasionBtn) invasionBtn.style.display = 'none';
+        if (invasionBtn) invasionBtn.style.display = 'inline-flex';
         if (resetBossBtn) resetBossBtn.style.display = 'none';
         if (addBossBtn) addBossBtn.style.display = 'none';
-        if (invTableContainer) invTableContainer.style.display = 'none';
+        if (invTableContainer) invTableContainer.style.display = isInvasionMode ? 'block' : 'none';
 
         if (homeTitle) {
             homeTitle.innerHTML = `🌾 เซิร์ฟเวอร์ฟาร์ม (Farm Server)
@@ -1231,6 +1278,7 @@ window.toggleFarmView = function () {
             homeTitle.style.color = '#c084fc';
             homeTitle.style.borderBottomColor = 'rgba(168, 85, 247, 0.25)';
         }
+        updateInvTitle();
         applyRoleUI();
     } else {
         if (homeTableContainer) {
@@ -1251,6 +1299,7 @@ window.toggleFarmView = function () {
         if (isInvasionMode && invTableContainer) {
             invTableContainer.style.display = 'block';
         }
+        updateInvTitle();
         applyRoleUI();
     }
 
@@ -1300,11 +1349,25 @@ function renderBosses() {
             bossTableBody.appendChild(emptyRow);
         }
 
+        if (isInvasionMode && invBossTableBody) {
+            let invFarmBosses = filteredBosses.filter(b => b.server_type === 'invasion_farm');
+            let invFarmRowIndex = 1;
+            invFarmBosses.forEach(boss => {
+                invBossTableBody.appendChild(createBossRow(boss, invFarmRowIndex++));
+            });
+
+            if (invFarmBosses.length === 0) {
+                const emptyRow = document.createElement('tr');
+                emptyRow.innerHTML = `<td colspan="8" style="text-align:center;padding:2rem;color:#94a3b8;">${searchQuery ? 'ไม่พบข้อมูลบอสที่ค้นหา' : 'ยังไม่มีข้อมูลบอสศัตรู ฟาร์ม (Invasion Farm)'}</td>`;
+                invBossTableBody.appendChild(emptyRow);
+            }
+        }
+
         updateCountdowns();
         return;
     }
 
-    let homeBosses = filteredBosses.filter(b => b.server_type !== 'invasion' && b.server_type !== 'home_farm');
+    let homeBosses = filteredBosses.filter(b => b.server_type !== 'invasion' && b.server_type !== 'home_farm' && b.server_type !== 'invasion_farm');
     let invBosses = filteredBosses.filter(b => b.server_type === 'invasion');
 
     let homeRowIndex = 1;
@@ -1490,12 +1553,10 @@ function updateCountdowns() {
 
     const now = getNow();
 
-    if (!isFarmView && !isFarmViewerOnly()) {
-        const currentPeriodState = checkAutoInvasionSchedule();
-        if (currentPeriodState !== lastAutoPeriodState) {
-            lastAutoPeriodState = currentPeriodState;
-            setInvasionMode(currentPeriodState, true);
-        }
+    const currentPeriodState = checkAutoInvasionSchedule();
+    if (currentPeriodState !== lastAutoPeriodState) {
+        lastAutoPeriodState = currentPeriodState;
+        setInvasionMode(currentPeriodState, true);
     }
 
     const clockEl = document.getElementById('live-thai-clock');
@@ -1684,7 +1745,7 @@ function updateSpawnPreview() {
         const deathDateEndMs = Date.UTC(y, m - 1, d, 23, 59, 59, 999) - (7 * 3600 * 1000);
         const isPastMidnight = nextSpawnMs > deathDateEndMs;
 
-        if (currentBoss && currentBoss.server_type === 'invasion' && isPastMidnight) {
+        if (currentBoss && (currentBoss.server_type === 'invasion' || currentBoss.server_type === 'invasion_farm') && isPastMidnight) {
             if (noTimeBtn) noTimeBtn.style.display = 'inline-block';
             if (midnightWarning) midnightWarning.style.display = 'block';
         } else {
@@ -1875,6 +1936,9 @@ window.editBoss = function (id) {
     } else if (boss.server_type === 'home_farm') {
         const farmRadio = document.getElementById('boss-server-farm');
         if (farmRadio) farmRadio.checked = true;
+    } else if (boss.server_type === 'invasion_farm') {
+        const invFarmRadio = document.getElementById('boss-server-inv-farm');
+        if (invFarmRadio) invFarmRadio.checked = true;
     } else {
         document.getElementById('boss-server-home').checked = true;
     }
@@ -2008,7 +2072,7 @@ async function handleConfirmDeath(e) {
         const ddFormat = String(d).padStart(2, '0');
         const hhFormat = String(inputHours).padStart(2, '0');
         const minFormat = String(inputMins).padStart(2, '0');
-        
+
         let oldDeadStr = "ยังไม่ระบุ";
         if (boss.last_death_time) {
             const oldD = new Date(boss.last_death_time);
@@ -2021,7 +2085,7 @@ async function handleConfirmDeath(e) {
             oldDeadStr = `${oDD}/${oMM} ${oHH}:${oMin}`;
         }
         const newDeadStr = `${ddFormat}/${mmFormat} ${hhFormat}:${minFormat}`;
-        
+
         addLog("Dead", boss.name, `บันทึกเวลาตาย (เปลี่ยนจาก ${oldDeadStr} เป็น ${newDeadStr})`, boss.server_type);
     }
 
@@ -2074,7 +2138,7 @@ window.skipSpawn = async function (id) {
     const thaiCurrentNext = getThaiDateFromUTC(currentNext);
     const endOfThaiDayMs = Date.UTC(thaiCurrentNext.getUTCFullYear(), thaiCurrentNext.getUTCMonth(), thaiCurrentNext.getUTCDate(), 23, 59, 59, 999) - (7 * 3600 * 1000);
     const isPastMidnight = nextSpawnDate.getTime() > endOfThaiDayMs;
-    const showNoTimeBtn = (boss.server_type === 'invasion') && isPastMidnight;
+    const showNoTimeBtn = (boss.server_type === 'invasion' || boss.server_type === 'invasion_farm') && isPastMidnight;
 
     const swalOptions = {
         title: 'ยืนยันบอสไม่เกิด?',
@@ -2179,7 +2243,7 @@ window.deleteBoss = async function () {
 
 window.openLogModal = async function () {
     openModal('log-modal');
-    
+
     // แสดง/ซ่อนปุ่มลบประวัติตามสิทธิ์แอดมิน
     const cleanupBtn = document.getElementById('btn-cleanup-logs');
     if (cleanupBtn) {
@@ -2190,28 +2254,58 @@ window.openLogModal = async function () {
     await loadBossLogs();
 };
 
+let allBossLogs = [];
+let currentLogPage = 1;
+const LOGS_PER_PAGE = 10;
+
 async function loadBossLogs() {
-    document.getElementById('log-table-body').innerHTML = '<tr><td colspan="4" style="text-align:center;">กำลังโหลดข้อมูล...</td></tr>';
+    const tbody = document.getElementById('log-table-body');
+    const paginationEl = document.getElementById('log-pagination');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 2rem;">กำลังโหลดข้อมูล...</td></tr>';
+    if (paginationEl) paginationEl.style.display = 'none';
 
     if (!supabaseClient) return;
     const { data, error } = await supabaseClient
         .from('boss_logs')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(100);
+        .limit(200);
 
     if (error) {
-        document.getElementById('log-table-body').innerHTML = `<tr><td colspan="4" style="text-align:center; color:#ef4444;">${error.message}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#ef4444; padding: 2rem;">${error.message}</td></tr>`;
         return;
     }
 
-    if (!data || data.length === 0) {
-        document.getElementById('log-table-body').innerHTML = '<tr><td colspan="4" style="text-align:center;">ไม่มีประวัติการแก้ไข</td></tr>';
+    allBossLogs = data || [];
+    currentLogPage = 1;
+    renderLogTablePage();
+}
+
+function renderLogTablePage() {
+    const tbody = document.getElementById('log-table-body');
+    const paginationEl = document.getElementById('log-pagination');
+    const pageInfoEl = document.getElementById('log-page-info');
+    const pageControlsEl = document.getElementById('log-page-controls');
+
+    if (!tbody) return;
+
+    if (!allBossLogs || allBossLogs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 2rem; color: #94a3b8;">ไม่มีประวัติการแก้ไข</td></tr>';
+        if (paginationEl) paginationEl.style.display = 'none';
         return;
     }
+
+    const totalLogs = allBossLogs.length;
+    const totalPages = Math.ceil(totalLogs / LOGS_PER_PAGE) || 1;
+    if (currentLogPage > totalPages) currentLogPage = totalPages;
+    if (currentLogPage < 1) currentLogPage = 1;
+
+    const startIndex = (currentLogPage - 1) * LOGS_PER_PAGE;
+    const endIndex = Math.min(startIndex + LOGS_PER_PAGE, totalLogs);
+    const pageLogs = allBossLogs.slice(startIndex, endIndex);
 
     let html = '';
-    data.forEach(log => {
+    pageLogs.forEach(log => {
         const d = new Date(log.created_at);
         const logThaiDate = new Date(d.getTime() + (7 * 3600 * 1000));
 
@@ -2235,6 +2329,8 @@ async function loadBossLogs() {
             serverBadge = `<span style="font-size: 0.65rem; background: rgba(239, 68, 68, 0.15); color: #fca5a5; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(239, 68, 68, 0.3); margin-right: 6px; white-space: nowrap;">⚔️ ศัตรู</span>`;
         } else if (log.server_context === 'home_farm') {
             serverBadge = `<span style="font-size: 0.65rem; background: rgba(16, 185, 129, 0.15); color: #6ee7b7; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.3); margin-right: 6px; white-space: nowrap;">🌾 เซิฟฟาม</span>`;
+        } else if (log.server_context === 'invasion_farm') {
+            serverBadge = `<span style="font-size: 0.65rem; background: rgba(239, 68, 68, 0.2); color: #fca5a5; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(239, 68, 68, 0.4); margin-right: 6px; white-space: nowrap;">⚔️ ศัตรูฟาร์ม</span>`;
         } else {
             serverBadge = `<span style="font-size: 0.65rem; background: rgba(0, 242, 254, 0.1); color: #00f2fe; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(0, 242, 254, 0.3); margin-right: 6px; white-space: nowrap;">🛡️ เรา</span>`;
         }
@@ -2252,8 +2348,44 @@ async function loadBossLogs() {
             </tr>
         `;
     });
-    document.getElementById('log-table-body').innerHTML = html;
+    tbody.innerHTML = html;
+
+    // Render Pagination Controls
+    if (paginationEl) {
+        paginationEl.style.display = totalLogs > LOGS_PER_PAGE ? 'flex' : 'none';
+    }
+    if (pageInfoEl) {
+        pageInfoEl.innerHTML = `แสดง <strong>${startIndex + 1} - ${endIndex}</strong> จาก <strong>${totalLogs}</strong> รายการแรก (หน้า ${currentLogPage}/${totalPages})`;
+    }
+    if (pageControlsEl) {
+        let controlsHtml = '';
+        
+        // Prev button
+        controlsHtml += `<button class="btn" style="padding: 4px 10px; font-size: 0.8rem; background: ${currentLogPage > 1 ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.03)'}; color: ${currentLogPage > 1 ? '#fff' : '#64748b'}; border: 1px solid rgba(255,255,255,0.1); border-radius: 5px; cursor: ${currentLogPage > 1 ? 'pointer' : 'not-allowed'};" ${currentLogPage > 1 ? `onclick="goToLogPage(${currentLogPage - 1})"` : 'disabled'}>◀ ก่อนหน้า</button>`;
+
+        // Page number buttons
+        for (let p = 1; p <= totalPages; p++) {
+            if (p === 1 || p === totalPages || (p >= currentLogPage - 1 && p <= currentLogPage + 1)) {
+                const isActive = p === currentLogPage;
+                controlsHtml += `<button class="btn" style="padding: 4px 10px; font-size: 0.8rem; min-width: 32px; background: ${isActive ? 'var(--accent-cyan, #00f2fe)' : 'rgba(255,255,255,0.08)'}; color: ${isActive ? '#000' : '#fff'}; font-weight: ${isActive ? 'bold' : 'normal'}; border: 1px solid ${isActive ? 'transparent' : 'rgba(255,255,255,0.1)'}; border-radius: 5px; cursor: pointer;" onclick="goToLogPage(${p})">${p}</button>`;
+            } else if (p === currentLogPage - 2 || p === currentLogPage + 2) {
+                controlsHtml += `<span style="color: #64748b; padding: 0 4px;">...</span>`;
+            }
+        }
+
+        // Next button
+        controlsHtml += `<button class="btn" style="padding: 4px 10px; font-size: 0.8rem; background: ${currentLogPage < totalPages ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.03)'}; color: ${currentLogPage < totalPages ? '#fff' : '#64748b'}; border: 1px solid rgba(255,255,255,0.1); border-radius: 5px; cursor: ${currentLogPage < totalPages ? 'pointer' : 'not-allowed'};" ${currentLogPage < totalPages ? `onclick="goToLogPage(${currentLogPage + 1})"` : 'disabled'}>ถัดไป ▶</button>`;
+
+        pageControlsEl.innerHTML = controlsHtml;
+    }
 }
+
+window.goToLogPage = function(page) {
+    currentLogPage = page;
+    renderLogTablePage();
+    const tableContainer = document.querySelector('.log-table-container');
+    if (tableContainer) tableContainer.scrollTop = 0;
+};
 
 window.cleanupOldLogs = async function () {
     if (!supabaseClient) return;
@@ -2263,8 +2395,8 @@ window.cleanupOldLogs = async function () {
         return;
     }
 
-    // คำนวณเวลาย้อนหลัง 2 วัน (48 ชั่วโมง)
-    const cutoffTime = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    // คำนวณเวลาย้อนหลัง 12 ชั่วโมง จากปัจจุบัน
+    const cutoffTime = new Date(Date.now() - (12 * 60 * 60 * 1000));
     const cutoffThai = new Date(cutoffTime.getTime() + (7 * 3600 * 1000));
     const day = String(cutoffThai.getUTCDate()).padStart(2, '0');
     const month = String(cutoffThai.getUTCMonth() + 1).padStart(2, '0');
@@ -2274,7 +2406,7 @@ window.cleanupOldLogs = async function () {
 
     const result = await swalDark.fire({
         title: 'ยืนยันการลบประวัติเก่า',
-        html: `ต้องการลบประวัติการเปลี่ยนเวลาบอสที่เก่ากว่า 2 วัน ทั้งหมดหรือไม่?<br><span style="font-size:0.85rem; color:#94a3b8;">(ระบบจะเก็บประวัติตั้งแต่ ${formattedCutoff} เป็นต้นมาไว้)</span>`,
+        html: `ต้องการลบประวัติการเปลี่ยนเวลาบอสที่เก่ากว่า 12 ชั่วโมง ทั้งหมดหรือไม่?<br><span style="font-size:0.85rem; color:#94a3b8;">(ระบบจะเก็บประวัติตั้งแต่ ${formattedCutoff} เป็นต้นมาไว้)</span>`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonText: 'ยืนยันการลบ',
@@ -2301,7 +2433,7 @@ window.cleanupOldLogs = async function () {
         } else {
             await swalDark.fire({
                 title: 'สำเร็จ',
-                text: 'ลบประวัติเก่าเรียบร้อยแล้ว (เก็บ 2 วันล่าสุดไว้)',
+                text: 'ลบประวัติเก่าเรียบร้อยแล้ว (เก็บ 12 ชั่วโมงล่าสุดไว้)',
                 icon: 'success',
                 timer: 1500,
                 showConfirmButton: false
@@ -2396,15 +2528,17 @@ window.handleConfirmStep2 = async function (e) {
 
     // Filter bosses with empty last_death_time
     let targetBosses = bosses.filter(b => b.is_active && !b.last_death_time);
-    
+
     if (scope === 'home') {
-        targetBosses = targetBosses.filter(b => b.server_type !== 'invasion' && b.server_type !== 'home_farm');
+        targetBosses = targetBosses.filter(b => b.server_type !== 'invasion' && b.server_type !== 'home_farm' && b.server_type !== 'invasion_farm');
     } else if (scope === 'invasion') {
         targetBosses = targetBosses.filter(b => b.server_type === 'invasion');
     } else if (scope === 'farm') {
         targetBosses = targetBosses.filter(b => b.server_type === 'home_farm');
+    } else if (scope === 'invasion_farm') {
+        targetBosses = targetBosses.filter(b => b.server_type === 'invasion_farm');
     }
-    
+
     if (targetBosses.length === 0) {
         swalDark.fire('ไม่พบบอสที่ต้องอัปเดต', 'ไม่มีบอสที่เวลาตายล่าสุดเป็นค่าว่าง', 'info');
         return;
@@ -2412,7 +2546,7 @@ window.handleConfirmStep2 = async function (e) {
 
     // Calculate computed times
     let computedSpawns = [];
-    
+
     for (const boss of targetBosses) {
         const hasFirstSpawn = (boss.first_spawn_mins && boss.first_spawn_mins > 0);
         let minsToAdd = 0;
@@ -2452,9 +2586,10 @@ window.handleConfirmStep2 = async function (e) {
     computedSpawns.sort((a, b) => a.nextSpawnDate.getTime() - b.nextSpawnDate.getTime());
 
     // Generate HTML for Popup 3
-    const homeSpawns = computedSpawns.filter(s => s.server_type !== 'invasion' && s.server_type !== 'home_farm');
+    const homeSpawns = computedSpawns.filter(s => s.server_type !== 'invasion' && s.server_type !== 'home_farm' && s.server_type !== 'invasion_farm');
     const invSpawns = computedSpawns.filter(s => s.server_type === 'invasion');
     const farmSpawns = computedSpawns.filter(s => s.server_type === 'home_farm');
+    const invFarmSpawns = computedSpawns.filter(s => s.server_type === 'invasion_farm');
 
     let htmlContent = `<div style="max-height: 300px; overflow-y: auto; text-align: left; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; font-size: 0.9rem;">`;
 
@@ -2502,7 +2637,22 @@ window.handleConfirmStep2 = async function (e) {
         });
         htmlContent += `</tbody></table></div>`;
     }
-    
+
+    if (invFarmSpawns.length > 0) {
+        htmlContent += `<div style="margin-bottom: 10px;">
+            <div style="color: #f87171; font-weight: bold; border-bottom: 1px solid rgba(239, 68, 68, 0.3); padding-bottom: 4px; margin-bottom: 4px; margin-top: 10px;">⚔️ บอสศัตรู ฟาร์ม (Invasion Farm)</div>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tbody>`;
+        invFarmSpawns.forEach(item => {
+            htmlContent += `
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 4px; color: #fff;">${item.name}</td>
+                    <td style="padding: 4px; text-align: right; color: #f87171;">${item.displayTime}</td>
+                </tr>`;
+        });
+        htmlContent += `</tbody></table></div>`;
+    }
+
     htmlContent += `</div>`;
 
     closeModal('reset-modal-step2');
@@ -2524,7 +2674,7 @@ window.handleConfirmStep2 = async function (e) {
     }
 };
 
-window.handleConfirmFinalReset = async function(computedSpawns, actualStr) {
+window.handleConfirmFinalReset = async function (computedSpawns, actualStr) {
     swalDark.fire({
         title: '⏳ กำลังบันทึกเวลาบอส...',
         allowOutsideClick: false,
@@ -2533,7 +2683,7 @@ window.handleConfirmFinalReset = async function(computedSpawns, actualStr) {
 
     try {
         let updateCount = 0;
-        
+
         for (const item of computedSpawns) {
             await supabaseClient
                 .from('bosses')
@@ -2765,7 +2915,7 @@ window.updateScheduleHighlights = function () {
 
     // Find current and next events for today
     const todayEvents = scheduleEvents.filter(e => e.day === currentDay && e.isVisible).sort((a, b) => a.time.localeCompare(b.time));
-    
+
     let currentEventId = null;
     let nextEventId = null;
 
@@ -2787,7 +2937,7 @@ window.updateScheduleHighlights = function () {
     }
 }
 
-window.checkScheduleNotifications = function() {
+window.checkScheduleNotifications = function () {
     if (!scheduleEvents || scheduleEvents.length === 0) return;
 
     const now = getNow();
@@ -2800,7 +2950,7 @@ window.checkScheduleNotifications = function() {
 
     // Find current event for today
     const todayEvents = scheduleEvents.filter(e => e.day === currentDay && e.isVisible).sort((a, b) => a.time.localeCompare(b.time));
-    
+
     let currentEventId = null;
     for (let i = 0; i < todayEvents.length; i++) {
         if (todayEvents[i].time === currentTimeStr) {
@@ -2821,7 +2971,7 @@ window.checkScheduleNotifications = function() {
             if (!isScheduleView) {
                 dotEl.style.display = 'block';
             }
-            
+
             // If they are currently looking at the schedule view, auto-acknowledge
             if (isScheduleView) {
                 localStorage.setItem('acknowledged_schedule_event', trackingKey);
@@ -2951,6 +3101,9 @@ window.promptResetTime = async function (serverType) {
     } else if (serverType === 'invasion') {
         serverNameStr = 'เซิร์ฟศัตรู (Invasion)';
         configKey = 'reset_password_invasion';
+    } else if (serverType === 'invasion_farm') {
+        serverNameStr = 'บอสศัตรู ฟาร์ม (Invasion Farm)';
+        configKey = 'reset_password_invasion_farm';
     }
 
     const { value: password } = await swalDark.fire({
@@ -2978,7 +3131,7 @@ window.promptResetTime = async function (serverType) {
                 .eq('config_name', configKey)
                 .maybeSingle();
 
-            // Fallback for farm server if reset_password_farm is not yet created in system_config
+            // Fallback for home_farm if reset_password_farm is not yet created in system_config
             if ((configError || !configData) && serverType === 'home_farm') {
                 const { data: fallbackData, error: fallbackError } = await supabaseClient
                     .from('system_config')
@@ -3028,7 +3181,7 @@ window.promptResetTime = async function (serverType) {
 };
 
 // --- Screenshot Mode ---
-window.openScreenshotModal = function() {
+window.openScreenshotModal = function () {
     const content = document.getElementById('screenshot-content');
     if (!content) return;
     content.innerHTML = '';
@@ -3043,9 +3196,10 @@ window.openScreenshotModal = function() {
         return timeA - timeB;
     });
 
-    const homeBosses = activeBosses.filter(b => b.server_type !== 'invasion' && b.server_type !== 'home_farm');
+    const homeBosses = activeBosses.filter(b => b.server_type !== 'invasion' && b.server_type !== 'home_farm' && b.server_type !== 'invasion_farm');
     const invBosses = activeBosses.filter(b => b.server_type === 'invasion');
     const farmBosses = activeBosses.filter(b => b.server_type === 'home_farm');
+    const invFarmBosses = activeBosses.filter(b => b.server_type === 'invasion_farm');
 
     // Create sections (Home is expanded by default, Farm & Invasion are collapsed)
     const sections = [];
@@ -3056,13 +3210,19 @@ window.openScreenshotModal = function() {
             const farmSection = createScreenshotSection('🌾 เซิร์ฟเวอร์ฟาร์ม (Farm)', '#10b981', farmBosses, true, sections);
             sections.push(farmSection);
             content.appendChild(farmSection.element);
-        } else {
+        }
+        if (invFarmBosses.length > 0) {
+            const invFarmSection = createScreenshotSection('⚔️ บอสศัตรู ฟาร์ม (Invasion Farm)', '#f87171', invFarmBosses, false, sections);
+            sections.push(invFarmSection);
+            content.appendChild(invFarmSection.element);
+        }
+        if (farmBosses.length === 0 && invFarmBosses.length === 0) {
             content.innerHTML = '<div style="text-align:center; padding: 20px; color: #94a3b8;">ไม่มีบอสเซิร์ฟฟาร์มที่เปิดใช้งานอยู่</div>';
         }
         openModal('screenshot-modal');
         return;
     }
-    
+
     if (homeBosses.length > 0) {
         const homeSection = createScreenshotSection('🛡️ เซิร์ฟเวอร์เรา (Home)', '#0ea5e9', homeBosses, true, sections);
         sections.push(homeSection);
@@ -3074,14 +3234,20 @@ window.openScreenshotModal = function() {
         sections.push(farmSection);
         content.appendChild(farmSection.element);
     }
-    
+
     if (invBosses.length > 0) {
         const invSection = createScreenshotSection('⚔️ เซิร์ฟศัตรู (Invasion)', '#ef4444', invBosses, false, sections);
         sections.push(invSection);
         content.appendChild(invSection.element);
     }
 
-    if (homeBosses.length === 0 && invBosses.length === 0 && farmBosses.length === 0) {
+    if (invFarmBosses.length > 0) {
+        const invFarmSection = createScreenshotSection('⚔️ บอสศัตรู ฟาร์ม (Invasion Farm)', '#f87171', invFarmBosses, false, sections);
+        sections.push(invFarmSection);
+        content.appendChild(invFarmSection.element);
+    }
+
+    if (homeBosses.length === 0 && invBosses.length === 0 && farmBosses.length === 0 && invFarmBosses.length === 0) {
         content.innerHTML = '<div style="text-align:center; padding: 20px; color: #94a3b8;">ไม่มีบอสที่เปิดใช้งานอยู่</div>';
     }
 
@@ -3091,11 +3257,11 @@ window.openScreenshotModal = function() {
 function createScreenshotSection(title, color, bossList, isExpanded, allSections) {
     const section = document.createElement('div');
     section.style.marginBottom = '15px';
-    
+
     const header = document.createElement('div');
     header.className = 'screenshot-section-title';
     header.style.color = color;
-    header.style.backgroundColor = color.replace(')', ', 0.15)').replace('rgb', 'rgba'); 
+    header.style.backgroundColor = color.replace(')', ', 0.15)').replace('rgb', 'rgba');
     header.style.cursor = 'pointer';
     header.style.display = 'flex';
     header.style.justifyContent = 'space-between';
@@ -3105,19 +3271,19 @@ function createScreenshotSection(title, color, bossList, isExpanded, allSections
     header.style.userSelect = 'none';
 
     if (color.startsWith('#')) {
-        header.style.backgroundColor = color + '20'; 
+        header.style.backgroundColor = color + '20';
     }
-    
+
     const titleText = document.createElement('span');
     titleText.textContent = title;
-    
+
     const toggleIcon = document.createElement('span');
     toggleIcon.textContent = isExpanded ? '▼' : '▶';
     toggleIcon.style.fontSize = '0.8rem';
-    
+
     header.appendChild(titleText);
     header.appendChild(toggleIcon);
-    
+
     const grid = document.createElement('div');
     grid.className = 'screenshot-grid';
     grid.style.marginTop = '15px';
@@ -3153,17 +3319,17 @@ function createScreenshotSection(title, color, bossList, isExpanded, allSections
 
     const sectionObj = {
         element: section,
-        collapse: function() {
+        collapse: function () {
             grid.style.display = 'none';
             toggleIcon.textContent = '▶';
         },
-        expand: function() {
+        expand: function () {
             grid.style.display = 'grid';
             toggleIcon.textContent = '▼';
         }
     };
 
-    header.onclick = function() {
+    header.onclick = function () {
         if (grid.style.display === 'none') {
             // Close all others first
             allSections.forEach(s => s.collapse());
@@ -3223,4 +3389,3 @@ window.refreshTableData = async function () {
         }, 500);
     }
 };
-

@@ -36,8 +36,10 @@
                         เสียง: เปิด</button>
                     <button id="toggle-viewer-mode-btn" class="btn secondary" onclick="toggleViewerMode()"
                         title="จำลองมุมมองคนดูทั่วไป"
-                        style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6; border: 1px solid rgba(139, 92, 246, 0.4); display: none;">👁️ โหมดคนดู: ปิด</button>
-                    <button id="screenshot-btn" class="btn secondary" onclick="openScreenshotModal()" title="แคปหน้าจอสรุปเวลาเกิดบอส"
+                        style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6; border: 1px solid rgba(139, 92, 246, 0.4); display: none;">👁️
+                        โหมดคนดู: ปิด</button>
+                    <button id="screenshot-btn" class="btn secondary" onclick="openScreenshotModal()"
+                        title="แคปหน้าจอสรุปเวลาเกิดบอส"
                         style="background: rgba(236, 72, 153, 0.15); color: #ec4899; border: 1px solid rgba(236, 72, 153, 0.4);">📸
                         สรุปเวลา</button>
                     <button id="log-btn" class="btn secondary" onclick="openLogModal()" title="ประวัติการแก้ไข">📜
@@ -65,10 +67,10 @@
                 <button id="refresh-data-btn" class="btn secondary" onclick="refreshTableData()"
                     title="รีเฟรชข้อมูลในตารางทั้งหมด"
                     style="background: rgba(0, 242, 254, 0.15); color: #00f2fe; border: 1px solid rgba(0, 242, 254, 0.4); position: relative;">
-                    <span id="refresh-icon" style="display: inline-block; transition: transform 0.6s ease;">🔄</span> รีเฟรช
+                    <span id="refresh-icon" style="display: inline-block; transition: transform 0.6s ease;">🔄</span>
+                    รีเฟรช
                 </button>
-                <button id="toggle-farm-btn" class="btn secondary" onclick="toggleFarmView()"
-                    title="สลับไปดูบอสเซิฟฟาม"
+                <button id="toggle-farm-btn" class="btn secondary" onclick="toggleFarmView()" title="สลับไปดูบอสเซิฟฟาม"
                     style="background: linear-gradient(135deg, #10b981, #059669); color: white;">🌾
                     เซิฟฟาม</button>
                 <button id="toggle-schedule-btn" class="btn secondary" onclick="toggleScheduleView()"
@@ -95,7 +97,9 @@
                     <h2 class="table-title" id="home-title"
                         style="color: #fff; text-align: center; font-size: 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding: 1.25rem 1rem; margin: 0; background: rgba(0,0,0,0.2); position: relative;">
                         🛡️ เซิร์ฟเวอร์เรา (Home)
-                        <button class="btn secondary action-cell" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); font-size: 0.85rem; padding: 5px 12px;" onclick="promptResetTime('home')">🔄 รีเซตเวลาบอส</button>
+                        <button class="btn secondary action-cell"
+                            style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); font-size: 0.85rem; padding: 5px 12px;"
+                            onclick="promptResetTime('home')">🔄 รีเซตเวลาบอส</button>
                     </h2>
                     <table class="boss-table">
                         <thead>
@@ -114,10 +118,12 @@
                 </div>
 
                 <div class="boss-table-container" id="inv-table-container" style="display: none;">
-                    <h2 class="table-title"
+                    <h2 class="table-title" id="inv-title"
                         style="color: #ef4444; text-align: center; font-size: 1.1rem; border-bottom: 1px solid rgba(239,68,68,0.2); padding: 1.25rem 1rem; margin: 0; background: rgba(0,0,0,0.2); position: relative;">
                         ⚔️ เซิร์ฟศัตรู (Invasion)
-                        <button class="btn action-cell" style="background: #ef4444; color: #fff; position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); font-size: 0.85rem; padding: 5px 12px;" onclick="promptResetTime('invasion')">🔄 รีเซตเวลาบอส</button>
+                        <button class="btn action-cell"
+                            style="background: #ef4444; color: #fff; position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); font-size: 0.85rem; padding: 5px 12px;"
+                            onclick="promptResetTime('invasion')">🔄 รีเซตเวลาบอส</button>
                     </h2>
                     <table class="boss-table invasion-table">
                         <thead>
@@ -181,6 +187,12 @@
                             id="label-boss-server-farm">
                             <input type="radio" name="server_type" value="home_farm" id="boss-server-farm">
                             เซิฟฟาม (Farm)
+                        </label>
+                        <label
+                            style="display: flex; align-items: center; gap: 0.5rem; margin: 0; cursor: pointer; color: #f87171;"
+                            id="label-boss-server-inv-farm">
+                            <input type="radio" name="server_type" value="invasion_farm" id="boss-server-inv-farm">
+                            บอสศัตรู ฟาร์ม (Invasion Farm)
                         </label>
                         <label
                             style="display: flex; align-items: center; gap: 0.5rem; margin: 0; cursor: pointer; color: #d8b4fe;"
@@ -264,7 +276,8 @@
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <input type="date" id="dead-date" required
                             style="flex: 1; min-width: 120px; padding: 1rem; font-size: 1.1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.5); color: #fff; color-scheme: dark; text-align: center; letter-spacing: 1px;">
-                        <input type="text" id="dead-time" placeholder="HH:mm" pattern="^([01]?[0-9]|2[0-3]):[0-5][0-9]$" required
+                        <input type="text" id="dead-time" placeholder="HH:mm" pattern="^([01]?[0-9]|2[0-3]):[0-5][0-9]$"
+                            required
                             style="flex: 1; min-width: 100px; padding: 1rem; font-size: 1.1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.5); color: #fff; text-align: center; letter-spacing: 2px;">
                     </div>
                     <div id="dead-spawn-preview"
@@ -308,7 +321,8 @@
 
                 <div class="form-group">
                     <label>เวลา (Time แบบ 24 ชม.)</label>
-                    <input type="text" id="schedule-time" placeholder="HH:mm" pattern="^([01]?[0-9]|2[0-3]):[0-5][0-9]$" required
+                    <input type="text" id="schedule-time" placeholder="HH:mm" pattern="^([01]?[0-9]|2[0-3]):[0-5][0-9]$"
+                        required
                         style="padding: 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 1.1rem; letter-spacing: 2px; text-align: center;">
                 </div>
 
@@ -343,27 +357,35 @@
             <h2 style="margin-top:0; color: #facc15; text-align: center;">🔄 กำหนดเวลาเปิดเซิฟเวอร์</h2>
             <form id="reset-step2-form">
                 <div class="form-group" style="margin-bottom: 1.5rem;">
-                    <label style="color: var(--accent-gold); font-weight: 600; display: block; margin-bottom: 6px; text-align: center;">⚙️ เวลาเปิดเซิฟจริง (Actual Server Open Time)</label>
+                    <label
+                        style="color: var(--accent-gold); font-weight: 600; display: block; margin-bottom: 6px; text-align: center;">⚙️
+                        เวลาเปิดเซิฟจริง (Actual Server Open Time)</label>
                     <input type="text" id="reset-actual-time" placeholder="เลือก วัน-เวลา ที่ระบบเปิดจริง"
-                        style="padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.5); color: #fff; font-size: 1.1rem; width: 100%; text-align: center; letter-spacing: 1px;" required>
-                    <small style="color: #94a3b8; font-size: 0.8rem; margin-top: 8px; display: block; text-align: center;">
+                        style="padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.5); color: #fff; font-size: 1.1rem; width: 100%; text-align: center; letter-spacing: 1px;"
+                        required>
+                    <small
+                        style="color: #94a3b8; font-size: 0.8rem; margin-top: 8px; display: block; text-align: center;">
                         * ระบบจะนำเวลานี้ไปคำนวณบวกกับเวลาเกิดของบอสแต่ละตัว
                     </small>
                 </div>
-                
+
                 <div class="form-group" style="margin-bottom: 1.5rem;">
-                    <label style="color: #fff; font-weight: 600; display: block; margin-bottom: 6px; text-align: center;">🌐 ขอบเขตการรีเซ็ต</label>
+                    <label
+                        style="color: #fff; font-weight: 600; display: block; margin-bottom: 6px; text-align: center;">🌐
+                        ขอบเขตการรีเซ็ต</label>
                     <select id="reset-scope-step2"
                         style="padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.8); color: #fff; font-size: 1rem; width: 100%;">
                         <option value="all">🌐 บอสทั้งหมด (ทุกเซิร์ฟเวอร์)</option>
                         <option value="home">🛡️ เฉพาะโลกเรา (Home เท่านั้น)</option>
                         <option value="invasion">⚔️ เฉพาะเซิร์ฟศัตรู (Invasion เท่านั้น)</option>
                         <option value="farm">🌾 เฉพาะเซิร์ฟฟาร์ม (Farm Server เท่านั้น)</option>
+                        <option value="invasion_farm">⚔️ เฉพาะบอสศัตรู ฟาร์ม (Invasion Farm เท่านั้น)</option>
                     </select>
                 </div>
 
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-cancel" onclick="closeModal('reset-modal-step2')">ยกเลิก</button>
+                    <button type="button" class="btn btn-cancel"
+                        onclick="closeModal('reset-modal-step2')">ยกเลิก</button>
                     <button type="submit" class="btn secondary">ตกลง / คำนวณเวลา</button>
                 </div>
             </form>
@@ -373,13 +395,17 @@
     <!-- Log History Modal -->
     <div id="log-modal" class="modal">
         <div class="modal-content" style="max-width: 1200px; width: 95%;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 10px;">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 10px;">
                 <h2 style="margin:0;">📜 ประวัติการแก้ไข</h2>
                 <div style="display: flex; gap: 8px; align-items: center;">
-                    <button id="btn-cleanup-logs" class="btn" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; font-size: 0.8rem; padding: 6px 12px; border-radius: 6px; cursor: pointer; display: none;" onclick="cleanupOldLogs()">
-                        🧹 ลบประวัติเก่า (เก็บ 2 วันล่าสุด)
+                    <button id="btn-cleanup-logs" class="btn"
+                        style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; font-size: 0.8rem; padding: 6px 12px; border-radius: 6px; cursor: pointer; display: none;"
+                        onclick="cleanupOldLogs()">
+                        🧹 ลบประวัติเก่า (เก็บ 12 ชม. ล่าสุด)
                     </button>
-                    <button class="btn secondary" onclick="closeModal('log-modal')" style="padding: 4px 10px;">X</button>
+                    <button class="btn secondary" onclick="closeModal('log-modal')"
+                        style="padding: 4px 10px;">X</button>
                 </div>
             </div>
             <div class="log-table-container" style="max-height: 400px; overflow-y: auto;">
@@ -397,34 +423,47 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- Log Pagination -->
+            <div id="log-pagination"
+                style="display: none; justify-content: space-between; align-items: center; margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.1); flex-wrap: wrap; gap: 10px;">
+                <span id="log-page-info" style="font-size: 0.85rem; color: #94a3b8;"></span>
+                <div id="log-page-controls" style="display: flex; gap: 6px; align-items: center;"></div>
+            </div>
         </div>
     </div>
 
 
     <!-- Screenshot Modal -->
     <div id="screenshot-modal" class="modal" style="align-items: flex-start; padding: 5vh 0; overflow-y: auto;">
-        <div class="modal-content" style="max-width: 1600px; width: 98%; background: #0f172a; padding: 25px 30px; margin: auto;">
-            <h2 style="text-align: center; margin-bottom: 20px; color: #fff; font-size: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+        <div class="modal-content"
+            style="max-width: 1600px; width: 98%; background: #0f172a; padding: 25px 30px; margin: auto;">
+            <h2
+                style="text-align: center; margin-bottom: 20px; color: #fff; font-size: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
                 📸 สรุปเวลาบอส
             </h2>
-            
+
             <div id="screenshot-content" style="display: flex; flex-direction: column; gap: 20px;">
                 <!-- Content will be generated by JS -->
             </div>
-            
-            <div class="modal-actions" style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; display: flex; justify-content: space-between; align-items: center;">
-                <span style="color: #94a3b8; font-size: 0.85rem;">จัดเรียงหน้าต่างให้พอดีแล้วใช้โปรแกรมแคปภาพหน้าจอได้เลย</span>
-                <button type="button" class="btn btn-cancel" onclick="closeModal('screenshot-modal')">ปิดหน้าต่าง</button>
+
+            <div class="modal-actions"
+                style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; display: flex; justify-content: space-between; align-items: center;">
+                <span
+                    style="color: #94a3b8; font-size: 0.85rem;">จัดเรียงหน้าต่างให้พอดีแล้วใช้โปรแกรมแคปภาพหน้าจอได้เลย</span>
+                <button type="button" class="btn btn-cancel"
+                    onclick="closeModal('screenshot-modal')">ปิดหน้าต่าง</button>
             </div>
         </div>
     </div>
-    
+
     <style>
         .screenshot-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 12px;
         }
+
         .screenshot-item {
             background: rgba(0, 0, 0, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -436,6 +475,7 @@
             gap: 15px;
             height: 100%;
         }
+
         .screenshot-item .boss-name {
             font-weight: 500;
             color: #e2e8f0;
@@ -444,6 +484,7 @@
             flex-grow: 1;
             word-break: break-word;
         }
+
         .screenshot-item .boss-time {
             font-family: monospace;
             font-size: 1.05rem;
@@ -451,6 +492,7 @@
             white-space: nowrap;
             text-align: right;
         }
+
         .screenshot-section-title {
             font-size: 1.1rem;
             font-weight: bold;
